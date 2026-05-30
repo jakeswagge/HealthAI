@@ -1,0 +1,22 @@
+Cigna Healthcare
+Authorization Approved
+
+We are pleased to inform you that the following request has been approved.
+
+Member: Thomas R. Delacroix
+ID #: CIG-3380012
+DOB: 03/07/1972
+Payer: Cigna Healthcare
+
+The requested procedure, an upper gastrointestinal endoscopy (EGD), has been
+authorized as medically necessary for the diagnosis of gastroesophageal reflux
+disease.
+
+Diagnosis: Gastro-esophageal reflux disease without esophagitis
+ICD-10 Code: K21.9
+Procedure: Upper GI endoscopy, diagnostic
+CPT: 43235
+Decision: APPROVED
+Physician: Dr. Angela R. Foster, MD
+
+Authorization valid for 90 days from the date of this notice.

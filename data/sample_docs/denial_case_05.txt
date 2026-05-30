@@ -1,0 +1,25 @@
+MOLINA HEALTHCARE
+Utilization Management - Adverse Determination
+
+Date of Notice: 05/09/2026
+
+Patient Name: Yolanda Cruz
+Member ID: MOL-7781340
+Date of Birth: 11/28/1974
+Payer: Molina Healthcare
+
+Diagnosis: Migraine, intractable
+ICD-10: G43.119
+Requested Service: Botulinum toxin injection for chronic migraine
+
+Decision: DENIED
+
+Reason for Denial: The request is denied as not medically necessary. The
+clinical documentation does not establish a diagnosis of chronic migraine
+(headache on >= 15 days per month for > 3 months) nor failure of at least two
+prophylactic medication classes, as required by Molina policy UM-NEU-018.
+
+Note: This sample intentionally omits the CPT code and the requesting
+physician to exercise missing-field handling.
+
+You may appeal within 180 days. Appeals: 1-800-555-0155.

@@ -1,0 +1,24 @@
+Aetna Better Health
+Prior Authorization Outcome Letter
+Date of Notice: 01/18/2026
+
+Dear Provider,
+
+This letter confirms the determination for the prior authorization request
+referenced below. Please retain it for your records.
+
+Insurance Company: Aetna Better Health
+Patient Name: Robert Chen
+Member ID: AET7741203
+Date of Birth: 06/15/1990
+
+Diagnosis: Obstructive sleep apnea
+ICD-10: G47.33
+Requested Service: Home sleep apnea test
+CPT Code: 95806
+
+Decision: Approved
+Ordering Provider: Dr. Lisa M. Park, MD
+
+This approval certifies medical necessity only and is not a guarantee of
+payment. Member Services: 1-800-555-0190

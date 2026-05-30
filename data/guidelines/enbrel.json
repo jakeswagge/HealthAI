@@ -1,0 +1,47 @@
+{
+  "guideline_id": "GL-ENBREL-001",
+  "service_name": "Enbrel (etanercept)",
+  "diagnosis": "Moderate to severe rheumatoid arthritis or plaque psoriasis",
+  "version": "2026.1",
+  "source": "HealthAI Simplified Pharmacy Policy (mock)",
+  "aliases": ["enbrel", "etanercept"],
+  "applicable_icd10": ["M05", "M06", "L40", "M07"],
+  "applicable_cpt": ["J1438"],
+  "required_criteria": [
+    {
+      "id": "DX_CONFIRMED",
+      "description": "Documented diagnosis of moderate-to-severe rheumatoid arthritis or plaque psoriasis.",
+      "keywords": ["rheumatoid arthritis", "plaque psoriasis", "psoriatic arthritis", "moderate to severe"],
+      "required": true
+    },
+    {
+      "id": "STEP_THERAPY",
+      "description": "Trial and failure of at least one conventional DMARD or systemic therapy (step therapy).",
+      "keywords": ["methotrexate", "dmard", "step therapy", "systemic therapy", "failed", "phototherapy"],
+      "required": true
+    },
+    {
+      "id": "TB_SCREEN",
+      "description": "Negative tuberculosis (TB) screening prior to initiating therapy.",
+      "keywords": ["tuberculosis", "tb test", "tb screen", "ppd", "quantiferon", "negative tb"],
+      "required": true
+    },
+    {
+      "id": "SPECIALIST",
+      "description": "Prescribed by or in consultation with a rheumatologist or dermatologist.",
+      "keywords": ["rheumatologist", "dermatologist", "specialist"],
+      "required": true
+    }
+  ],
+  "contraindications": [
+    {
+      "id": "SEPSIS",
+      "description": "Active sepsis or serious active infection.",
+      "keywords": ["sepsis", "active infection", "active tuberculosis"]
+    }
+  ],
+  "supporting_evidence": [
+    "ACR Guideline for the Treatment of Rheumatoid Arthritis (simplified)",
+    "AAD Psoriasis management guideline (simplified)"
+  ]
+}

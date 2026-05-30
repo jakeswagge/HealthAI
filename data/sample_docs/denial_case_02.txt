@@ -1,0 +1,26 @@
+Humana Insurance Company
+NOTICE OF ADVERSE BENEFIT DETERMINATION
+
+Date: 03/05/2026
+
+Member Name: Gregory P. Salinas
+Member ID: HUM-6610294
+Date of Birth: 07/11/1963
+Insurance Company: Humana Insurance Company
+
+Diagnosis: Chronic low back pain
+ICD-10: M54.50
+Requested Service: Lumbar spine MRI without contrast
+CPT Code: 72148
+Requesting Provider: Dr. Nina S. Abbott, MD
+
+DECISION: DENIED
+
+Reason for Denial: The request is denied as not medically necessary. The
+submitted records do not document a minimum of 6 weeks of conservative
+treatment (physical therapy or NSAID management) prior to advanced imaging,
+as required by Humana Medical Coverage Policy MCP-RAD-022.
+
+You have the right to appeal this decision within 180 days. To file an appeal,
+write to Humana Appeals, PO Box 14601, Lexington, KY 40512, or call
+1-800-555-0133.

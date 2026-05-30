@@ -1,0 +1,71 @@
+==================================================================
+            PRIOR AUTHORIZATION DETERMINATION NOTICE
+==================================================================
+Payer: Meridian Health Plan
+Notice Type: ADVERSE DETERMINATION (DENIAL)
+Date of Notice: 03/14/2026
+Reference / Authorization #: PA-2026-0098142
+
+------------------------------------------------------------------
+MEMBER INFORMATION
+------------------------------------------------------------------
+Member Name:        Johnathan A. Reyes
+Member ID:          MHP-4471900
+Date of Birth:      08/22/1968
+Group #:            GRP-22841
+Plan:               Meridian PPO Gold
+
+------------------------------------------------------------------
+PROVIDER INFORMATION
+------------------------------------------------------------------
+Requesting Provider: Dr. Karen L. Whitfield, MD (Cardiology)
+NPI:                 1356782204
+Facility:            Lakeside Cardiovascular Institute
+Servicing Location:  4120 Harbor Blvd, Suite 300, Riverton, OH
+
+------------------------------------------------------------------
+REQUESTED SERVICE
+------------------------------------------------------------------
+Procedure:          Cardiac MRI with contrast
+CPT Code(s):        75561
+ICD-10 Diagnosis:   I42.0 (Dilated cardiomyopathy)
+Requested Units:    1
+Date(s) of Service: Requested for 03/28/2026
+Place of Service:   Outpatient Hospital (22)
+
+------------------------------------------------------------------
+DETERMINATION
+------------------------------------------------------------------
+Status: DENIED
+
+Rationale:
+The request for a cardiac MRI with contrast (CPT 75561) has been
+denied as NOT MEDICALLY NECESSARY based on the plan's clinical
+coverage criteria. The submitted documentation does not include
+evidence that a transthoracic echocardiogram (TTE) was performed
+within the prior 90 days, nor documentation that the echocardiogram
+results were inconclusive. Per Meridian Clinical Policy CP-CARD-014,
+advanced cardiac imaging requires a prior non-diagnostic or
+inconclusive echocardiogram before authorization.
+
+Clinical Criteria Referenced:
+  - Meridian Clinical Policy CP-CARD-014, Section 3.2
+  - MCG Health Guidelines, Cardiac Imaging A-0421
+
+------------------------------------------------------------------
+APPEAL RIGHTS
+------------------------------------------------------------------
+You have the right to appeal this decision. A standard appeal must
+be submitted in writing within 180 days of the date of this notice.
+For an expedited appeal (when a delay could seriously jeopardize the
+member's health), call the number below.
+
+Appeals Address: Meridian Health Plan, Attn: Appeals Dept,
+                 PO Box 55120, Columbus, OH 43215
+Appeals Phone:   1-800-555-0142  (TTY: 711)
+Reviewing Medical Director: Dr. Steven P. Ortega, MD
+
+==================================================================
+This notice is for the named member and provider only. Retain a
+copy for your records.
+==================================================================

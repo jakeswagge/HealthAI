@@ -1,0 +1,74 @@
+==================================================================
+            PRIOR AUTHORIZATION DETERMINATION NOTICE
+==================================================================
+Payer: Meridian Health Plan
+Notice Type: FAVORABLE DETERMINATION (APPROVAL)
+Date of Notice: 02/09/2026
+Reference / Authorization #: PA-2026-0061337
+
+------------------------------------------------------------------
+MEMBER INFORMATION
+------------------------------------------------------------------
+Member Name:        Maria S. Delgado
+Member ID:          MHP-3320118
+Date of Birth:      11/04/1979
+Group #:            GRP-10277
+Plan:               Meridian HMO Silver
+
+------------------------------------------------------------------
+PROVIDER INFORMATION
+------------------------------------------------------------------
+Requesting Provider: Dr. Aaron T. Nguyen, MD (Orthopedic Surgery)
+NPI:                 1992047318
+Facility:            Summit Orthopedic Associates
+Servicing Location:  889 Greenfield Ave, Building B, Maple Grove, OH
+
+------------------------------------------------------------------
+REQUESTED SERVICE
+------------------------------------------------------------------
+Procedure:          MRI of left knee without contrast
+CPT Code(s):        73721
+ICD-10 Diagnosis:   M23.205 (Derangement of meniscus, left knee)
+Requested Units:    1
+Date(s) of Service: Approved for 02/20/2026 - 05/20/2026
+Place of Service:   Outpatient Hospital (22)
+
+------------------------------------------------------------------
+DETERMINATION
+------------------------------------------------------------------
+Status: APPROVED
+
+Rationale:
+The request for an MRI of the left knee without contrast
+(CPT 73721) has been APPROVED as medically necessary. The submitted
+documentation supports the request, including:
+  - Documented mechanical symptoms (locking and catching) persisting
+    for more than 6 weeks.
+  - Failure of conservative therapy: 6 weeks of physical therapy and
+    NSAID management without resolution.
+  - Physical exam findings consistent with a meniscal tear
+    (positive McMurray test).
+
+This meets Meridian Clinical Policy CP-MSK-009, Section 2.1 for
+advanced imaging of the knee.
+
+Authorized Details:
+  - Approved Units: 1
+  - Valid Through: 05/20/2026
+  - Authorization #: PA-2026-0061337
+
+------------------------------------------------------------------
+IMPORTANT NOTES
+------------------------------------------------------------------
+This approval certifies medical necessity only. It is not a
+guarantee of payment. Final payment is subject to the member's
+eligibility, benefits, and any applicable cost-sharing on the date
+of service. Services must be rendered by an in-network provider to
+receive in-network benefits.
+
+Member Services: 1-800-555-0177  (TTY: 711)
+
+==================================================================
+This notice is for the named member and provider only. Retain a
+copy for your records.
+==================================================================

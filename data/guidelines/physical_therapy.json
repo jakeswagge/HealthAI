@@ -1,0 +1,40 @@
+{
+  "guideline_id": "GL-PT-001",
+  "service_name": "Physical Therapy",
+  "diagnosis": "Musculoskeletal pain / post-injury rehabilitation",
+  "version": "2026.1",
+  "source": "HealthAI Simplified Rehabilitation Policy (mock)",
+  "aliases": ["physical therapy", "pt", "physiotherapy", "rehabilitation", "outpatient physical therapy"],
+  "applicable_icd10": ["M25", "M54", "M75", "S83", "M62"],
+  "applicable_cpt": ["97110", "97112", "97140", "97530"],
+  "required_criteria": [
+    {
+      "id": "FUNCTIONAL_DEFICIT",
+      "description": "Documented functional deficit or impairment (range of motion, strength, mobility, pain limiting function).",
+      "keywords": ["functional deficit", "range of motion", "weakness", "impairment", "mobility", "limited function", "pain"],
+      "required": true
+    },
+    {
+      "id": "TREATMENT_PLAN",
+      "description": "A defined plan of care with measurable goals and expected duration/frequency.",
+      "keywords": ["plan of care", "treatment plan", "goals", "frequency", "duration", "measurable goals"],
+      "required": true
+    },
+    {
+      "id": "PHYSICIAN_REFERRAL",
+      "description": "Physician referral or order for physical therapy.",
+      "keywords": ["referral", "physician order", "prescribed", "ordered by", "referred by"],
+      "required": true
+    }
+  ],
+  "contraindications": [
+    {
+      "id": "UNSTABLE",
+      "description": "Acute unstable medical condition precluding active therapy.",
+      "keywords": ["unstable", "acute fracture unstabilized", "medically unstable"]
+    }
+  ],
+  "supporting_evidence": [
+    "APTA Guide to Physical Therapist Practice (simplified)"
+  ]
+}

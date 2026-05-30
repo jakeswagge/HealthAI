@@ -1,0 +1,29 @@
+BLUE CROSS BLUE SHIELD
+Medical Necessity Review - Determination
+
+Notice Date: 02/27/2026
+Authorization #: BCBS-PA-1192847
+
+------------------------------------------------
+MEMBER
+  Patient Name: Emily J. Navarro
+  Member ID: BCBS-44820019
+  Date of Birth: 09/19/1988
+  Insurance Company: Blue Cross Blue Shield
+------------------------------------------------
+REQUEST
+  Diagnosis: Lumbar disc herniation with radiculopathy
+  ICD-10: M51.16
+  Requested Service: Lumbar epidural steroid injection
+  CPT Code: 62323
+  Requesting Provider: Dr. Henry K. Lawson, MD (Pain Management)
+------------------------------------------------
+REVIEW OUTCOME
+  This request has been reviewed against medical necessity criteria.
+  Determination: APPROVED
+
+  The documentation supports the request: imaging-confirmed L5-S1 disc
+  herniation and failure of at least 6 weeks of conservative therapy.
+------------------------------------------------
+
+Questions? Call Member Services at 1-800-555-0166.

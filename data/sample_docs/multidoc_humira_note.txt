@@ -1,0 +1,19 @@
+Summit Rheumatology Associates
+CLINICAL PROGRESS NOTE
+
+Patient: Harold T. Greene
+Date of Birth: 04/17/1971
+Provider: Dr. Susan A. Patel, MD (Rheumatology)
+
+Diagnosis: Moderate to severe rheumatoid arthritis
+ICD-10: M06.9
+
+History: The patient has documented moderate-to-severe rheumatoid arthritis.
+He completed a 3-month trial of methotrexate, a conventional DMARD, with an
+inadequate response and persistent disease activity. Methotrexate was escalated
+to the maximum tolerated dose without achieving remission.
+
+Tuberculosis screening (QuantiFERON-TB Gold) was performed and is negative.
+
+Plan: Initiate Humira (adalimumab) as the next line of therapy given DMARD
+failure. Prescribed by a rheumatologist.

@@ -1,0 +1,24 @@
+UNITEDHEALTHCARE | NOTIFICATION OF APPROVAL
+=================================================
+
+Reference No: UHC-PA-558201          Notice Date: 04/02/2026
+
+PATIENT / MEMBER
+  Member Name:   Sandra O. Whitaker
+  Member ID:     UHC-902118746
+  Date of Birth: 12/30/1955
+  Insurance Company: UnitedHealthcare
+
+CLINICAL
+  Diagnosis:           Age-related cataract, right eye
+  ICD-10 Diagnosis:    H25.011
+  Requested Service:   Cataract extraction with IOL insertion, right eye
+  CPT Code(s):         66984
+  Requesting Physician: Dr. Marcus T. Webb, MD (Ophthalmology)
+
+DETERMINATION
+  Status: APPROVED
+  Approved Units: 1
+  Valid Through: 07/02/2026
+
+Payment is subject to eligibility and benefits on the date of service.

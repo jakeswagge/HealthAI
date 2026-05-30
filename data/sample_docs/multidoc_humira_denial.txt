@@ -1,0 +1,25 @@
+WellPoint National Insurance
+NOTICE OF ADVERSE BENEFIT DETERMINATION (DENIAL)
+
+Date of Notice: 05/22/2026
+Authorization #: WP-PA-7781120
+
+Patient Name: Harold T. Greene
+Member ID: WP-558210334
+Date of Birth: 04/17/1971
+Insurance Company: WellPoint National Insurance
+
+Diagnosis: Moderate to severe rheumatoid arthritis
+ICD-10: M06.9
+Requested Service: Humira (adalimumab)
+CPT/HCPCS: J0135
+Requesting Provider: Dr. Susan A. Patel, MD
+
+Status: DENIED
+
+Reason for Denial: The request for Humira (adalimumab) is denied as not
+medically necessary because the step therapy requirement has not been met.
+The submitted records do not document a trial and failure of a conventional
+DMARD (such as methotrexate) prior to initiating biologic therapy.
+
+You may appeal this decision within 180 days.

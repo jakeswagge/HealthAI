@@ -1,0 +1,28 @@
+# HealthAI dependencies
+#
+# Supported Python:    3.12  (recommended target)
+# Experimental Python: 3.13  (developed/validated here; see docs/environment.md)
+#
+# Compatibility notes:
+# - pymupdf and pydantic-core are compiled wheels; verify a wheel exists for
+#   your Python/OS before upgrading the interpreter.
+# - The anthropic SDK is OPTIONAL: the app runs fully offline (local + mock
+#   backends) without it. Install it + set ANTHROPIC_API_KEY to use real Claude.
+
+# --- Milestone 1: document extraction + UI ---
+streamlit>=1.40.0
+pymupdf>=1.24.0
+pydantic>=2.7.0
+pytest>=8.0.0
+
+# --- Milestone 2: AI medical extraction (optional real-Claude backend) ---
+anthropic>=0.39.0
+
+# --- Milestone 9: OCR (OPTIONAL) ---
+# Real OCR of scanned PDFs / images needs the tesseract binary plus these
+# bindings. Without them, ingestion uses a deterministic offline mock provider
+# and the workflow still runs (scanned images simply yield no text + a warning).
+# Pillow is already present transitively via streamlit, but is pinned here for
+# the OCR path. Install tesseract separately (e.g. choco/apt/brew).
+# pytesseract>=0.3.10
+# pillow>=10.0.0

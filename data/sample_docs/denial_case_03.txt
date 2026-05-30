@@ -1,0 +1,29 @@
+================ KAISER PERMANENTE ================
+        PRIOR AUTHORIZATION - DENIED
+===================================================
+
+Notice Date ......... 04/14/2026
+Authorization # ..... KP-PA-7740156
+Payer ............... Kaiser Permanente
+
+MEMBER INFORMATION
+  Patient ........... Denise A. Holloway
+  Member ID ......... KP-330018822
+  DOB ............... 02/02/1980
+
+SERVICE REQUESTED
+  Diagnosis ......... Morbid obesity
+  ICD-10 ............ E66.01
+  Procedure ......... Laparoscopic sleeve gastrectomy
+  CPT ............... 43775
+  Physician ......... Dr. Omar F. Reyes, MD (Bariatric Surgery)
+
+DETERMINATION ...... DENIED
+
+RATIONALE:
+The request for bariatric surgery is denied. Documentation does not
+demonstrate completion of a physician-supervised weight management program of
+at least 6 consecutive months within the past two years, which is required
+under Kaiser Clinical Policy CP-BAR-003.
+
+APPEAL: You may request a review within 180 days by calling 1-800-555-0120.

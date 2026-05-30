@@ -1,0 +1,34 @@
+{
+  "guideline_id": "GL-MRI-LUMBAR-001",
+  "service_name": "MRI Lumbar Spine",
+  "diagnosis": "Low back pain / lumbar radiculopathy",
+  "version": "2026.1",
+  "source": "HealthAI Simplified Radiology Policy (mock)",
+  "aliases": ["mri lumbar spine", "lumbar spine mri", "mri of the lumbar spine", "lumbar mri", "mri lumbar"],
+  "applicable_icd10": ["M54", "M51", "M48"],
+  "applicable_cpt": ["72148", "72149", "72158"],
+  "required_criteria": [
+    {
+      "id": "CONSERVATIVE_THERAPY",
+      "description": "At least 6 weeks of conservative therapy (physical therapy and/or NSAIDs) without resolution.",
+      "keywords": ["conservative therapy", "physical therapy", "nsaid", "6 weeks", "six weeks", "failed conservative"],
+      "required": true
+    },
+    {
+      "id": "NEURO_FINDINGS",
+      "description": "Documented neurological findings or red-flag symptoms (radiculopathy, weakness, numbness) OR suspicion of serious pathology.",
+      "keywords": ["radiculopathy", "neurological", "weakness", "numbness", "red flag", "cauda equina", "radicular"],
+      "required": true
+    }
+  ],
+  "contraindications": [
+    {
+      "id": "INCOMPATIBLE_DEVICE",
+      "description": "MRI-incompatible implanted device without safe protocol.",
+      "keywords": ["incompatible pacemaker", "mri incompatible", "non-conditional implant"]
+    }
+  ],
+  "supporting_evidence": [
+    "ACR Appropriateness Criteria - Low Back Pain (simplified)"
+  ]
+}

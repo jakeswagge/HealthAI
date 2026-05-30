@@ -1,0 +1,17 @@
+Summit Regional Laboratory
+LABORATORY RESULTS REPORT
+
+Patient: Harold T. Greene
+Member ID: WP-558210334
+Collected: 05/01/2026
+
+Test Panel: Rheumatology workup
+
+Results:
+- Rheumatoid Factor (RF): 85 IU/mL (Reference Range: <14 IU/mL) — HIGH
+- Anti-CCP antibody: 120 U/mL (Reference Range: <20 U/mL) — HIGH
+- C-Reactive Protein (CRP): 18 mg/L (Reference Range: <5 mg/L) — HIGH
+- QuantiFERON-TB Gold: NEGATIVE
+
+Interpretation: Serologic markers are consistent with active, seropositive
+rheumatoid arthritis. Negative tuberculosis screening.

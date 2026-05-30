@@ -1,0 +1,35 @@
+{
+  "guideline_id": "GL-CT-CHEST-001",
+  "service_name": "CT Chest",
+  "diagnosis": "Pulmonary nodule / suspected thoracic pathology",
+  "version": "2026.1",
+  "source": "HealthAI Simplified Radiology Policy (mock)",
+  "aliases": ["ct chest", "chest ct", "ct of the chest", "computed tomography chest", "ct thorax"],
+  "applicable_icd10": ["R91", "C34", "R05", "J98"],
+  "applicable_cpt": ["71250", "71260", "71270"],
+  "required_criteria": [
+    {
+      "id": "INDICATION",
+      "description": "Clear clinical indication: pulmonary nodule on prior imaging, suspected malignancy, or persistent unexplained symptoms.",
+      "keywords": ["pulmonary nodule", "nodule", "suspected malignancy", "lung cancer", "hemoptysis", "mass", "abnormal chest x-ray"],
+      "required": true
+    },
+    {
+      "id": "PRIOR_IMAGING",
+      "description": "Prior chest radiograph (X-ray) performed, or documented rationale for proceeding directly to CT.",
+      "keywords": ["chest x-ray", "chest radiograph", "prior imaging", "cxr", "x-ray performed"],
+      "required": true
+    }
+  ],
+  "contraindications": [
+    {
+      "id": "CONTRAST_ALLERGY",
+      "description": "Severe contrast allergy when contrast study requested without premedication plan.",
+      "keywords": ["severe contrast allergy", "anaphylaxis to contrast"]
+    }
+  ],
+  "supporting_evidence": [
+    "ACR Appropriateness Criteria - Pulmonary Nodule (simplified)",
+    "Fleischner Society guidance (simplified)"
+  ]
+}

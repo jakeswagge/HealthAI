@@ -1,0 +1,29 @@
+Anthem Blue Cross
+Re: Prior Authorization Request - Determination Enclosed
+
+Dear Member,
+
+We have completed our review of the prior authorization request submitted on
+your behalf. Unfortunately, we are unable to approve the requested service at
+this time.
+
+Patient Name: Marcus J. Bellamy
+Member ID: ANT-5582019
+Date of Birth: 10/25/1995
+Insurance Company: Anthem Blue Cross
+
+Diagnosis: Knee osteoarthritis, bilateral
+ICD-10 Codes: M17.0
+Requested Service: Viscosupplementation injection (hyaluronic acid), both knees
+CPT Code: 20611
+Requesting Physician: Dr. Patricia L. Soto, MD
+
+Decision: Denied
+
+Denial Reason: The requested viscosupplementation is considered investigational
+for bilateral administration and does not meet the plan's coverage criteria
+under Clinical UM Guideline CG-MED-077. Conservative management options remain
+available.
+
+This is an adverse determination. Appeal rights and instructions are enclosed.
+Appeals line: 1-800-555-0144.
