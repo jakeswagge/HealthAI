@@ -70,6 +70,10 @@ _AUTHORITATIVE: dict[str, tuple[DocumentCategory, ...]] = {
     "member_id": (DocumentCategory.DENIAL_LETTER, DocumentCategory.PRIOR_AUTH_FORM),
 }
 
+_CLINICAL_SERVICE_TOKENS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("Humira (adalimumab)", ("humira", "adalimumab")),
+)
+
 
 def _norm_value(fact_type: str, value: str) -> str:
     """Normalize a value for equality comparison (case/space-insensitive)."""
@@ -96,6 +100,60 @@ class CaseAssemblyEngine:
         for doc in documents:
             all_evidence.extend(self.extractor.extract(doc))
         evidence = self._dedupe(all_evidence)
+
+        return self._assemble_from_evidence(
+            case_id,
+            evidence,
+            doc_by_id,
+            document_ids=[d.document_id for d in documents],
+            allow_document_text_healing=True,
+        )
+
+    def synthesize_from_evidence(
+        self,
+        case_id: str,
+        evidence: list[EvidenceReference],
+        documents: list[CaseDocument] | None = None,
+    ) -> UnifiedCaseContext:
+        """Assemble a context from a GIVEN evidence list (not re-extracted).
+
+        Milestone 13 (governance enforcement): downstream review/appeal must run
+        only on governance-permitted evidence. This synthesizes a
+        :class:`UnifiedCaseContext` (and its :class:`PatientCase`) from exactly
+        the evidence references supplied - e.g. the included subset of an
+        :class:`ApprovedEvidenceSet`. Rejected/excluded evidence therefore cannot
+        influence the resulting case, conflicts, or missing-information list.
+
+        ``documents`` is optional; when provided it is used only to score
+        authoritative document types during conflict resolution (same logic as
+        :meth:`assemble`). When omitted, resolution falls back to confidence.
+        """
+        doc_by_id = {d.document_id: d for d in (documents or [])}
+        deduped = self._dedupe(list(evidence))
+        document_ids: list[str] = []
+        for ev in deduped:
+            if ev.source_document_id not in document_ids:
+                document_ids.append(ev.source_document_id)
+        return self._assemble_from_evidence(
+            case_id,
+            deduped,
+            doc_by_id,
+            document_ids=document_ids,
+            allow_document_text_healing=False,
+        )
+
+    def _assemble_from_evidence(
+        self,
+        case_id: str,
+        evidence: list[EvidenceReference],
+        doc_by_id: dict[str, CaseDocument],
+        document_ids: list[str],
+        allow_document_text_healing: bool,
+    ) -> UnifiedCaseContext:
+        """Shared assembly core: group -> resolve -> synthesize a context."""
+        evidence = self._heal_requested_service_evidence(
+            case_id, evidence, doc_by_id, allow_document_text_healing
+        )
 
         # 2. Group evidence by fact type.
         by_fact: dict[str, list[EvidenceReference]] = {}
@@ -149,13 +207,67 @@ class CaseAssemblyEngine:
 
         return UnifiedCaseContext(
             case_id=case_id,
-            document_ids=[d.document_id for d in documents],
+            document_ids=document_ids,
             evidence=evidence,
             resolved_facts=resolved,
             conflict_report=conflict_report,
             missing_information=missing,
             patient_case=patient_case,
         )
+
+    def _heal_requested_service_evidence(
+        self,
+        case_id: str,
+        evidence: list[EvidenceReference],
+        doc_by_id: dict[str, CaseDocument],
+        allow_document_text_healing: bool,
+    ) -> list[EvidenceReference]:
+        """Add traceable requested-service evidence from known drug tokens.
+
+        The governance path passes ``allow_document_text_healing=False`` so
+        rejected/excluded raw document text cannot re-enter downstream review.
+        """
+        if any(ev.fact_type == "requested_service" for ev in evidence):
+            return evidence
+
+        candidates: list[tuple[str, str, CaseDocument | None]] = []
+        for ev in evidence:
+            haystack = " ".join(
+                part for part in (ev.normalized_fact, ev.quoted_text) if part
+            )
+            if haystack:
+                candidates.append((haystack, ev.quoted_text or haystack, None))
+
+        if allow_document_text_healing:
+            for doc in doc_by_id.values():
+                for page in doc.pages():
+                    for line in page.splitlines():
+                        if line.strip():
+                            candidates.append((line, line.strip(), doc))
+
+        for haystack, quote, doc in candidates:
+            low = haystack.lower()
+            for canonical, tokens in _CLINICAL_SERVICE_TOKENS:
+                if any(token in low for token in tokens):
+                    source_doc = doc
+                    if source_doc is None and evidence:
+                        source_doc = doc_by_id.get(evidence[0].source_document_id)
+                    if source_doc is None:
+                        continue
+                    healed = EvidenceReference(
+                        case_id=case_id,
+                        source_document_id=source_doc.document_id,
+                        source_filename=source_doc.filename,
+                        page_number=1,
+                        section_label="Requested service inference",
+                        quoted_text=quote,
+                        normalized_fact=f"requested_service: {canonical}",
+                        fact_type="requested_service",
+                        confidence_score=0.7,
+                    )
+                    return [*evidence, healed]
+
+        return evidence
 
     # ------------------------------------------------------------------ #
     # Helpers
@@ -237,7 +349,7 @@ class CaseAssemblyEngine:
                     out.append(v)
             return out
 
-        decision_raw = val("decision") or "unknown"
+        decision_raw = val("decision") or "pending"
 
         field_sources: dict[str, FieldSource] = {}
         for fact, rf in resolved.items():

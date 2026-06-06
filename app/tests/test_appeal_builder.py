@@ -90,15 +90,11 @@ class TestSuccessCriterion:
 
 
 class TestApprovalCase:
-    def test_approval_has_no_missing_gaps(self):
+    def test_approval_does_not_generate_appeal(self):
         review = _review_for(APPROVAL_CASE, APPROVAL_DOC)
         assert review.recommendation is Recommendation.APPROVE
-        appeal = AppealLetterBuilder().build(APPROVAL_CASE, review)
-        # Fully supported -> no missing information items.
-        assert appeal.missing_information == []
-        # Letter still complete.
-        for header in SECTION_HEADERS:
-            assert f"## {header}" in appeal.letter_text
+        with pytest.raises(ValueError, match="No active insurance denial"):
+            AppealLetterBuilder().build(APPROVAL_CASE, review)
 
 
 class TestMissingInformationSafety:

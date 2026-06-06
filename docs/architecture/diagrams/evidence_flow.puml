@@ -1,0 +1,45 @@
+@startuml evidence_flow
+title HealthAI - Evidence Flow (source -> cited appeal)
+
+start
+:Upload (TXT / PDF / PNG / JPG);
+:DocumentIngestionEngine.detect_kind;
+if (text layer present?) then (yes)
+  :use embedded text (no OCR);
+else (no)
+  :OCR provider -> OCRPageResult[]\n(text + confidence + method);
+endif
+:CaseDocument (raw_text pages joined by \f);
+
+partition "Evidence extraction" {
+  if (AI backend?) then (Claude)
+    :ClaudeEvidenceExtractor;
+    :anti-fabrication gate\n(quote must be in source);
+  else (offline)
+    :EvidenceExtractor (regex)\nor VisionEvidenceExtractor (OCR);
+  endif
+  :EvidenceReference[]\n(source doc + page + verbatim quote + confidence);
+}
+
+partition "Assembly" {
+  :de-duplicate;
+  :resolve best value per fact;
+  :detect conflicts (severity);
+  :identify missing fields;
+  :synthesize PatientCase (FieldSource per field);
+  :UnifiedCaseContext;
+}
+
+:EvidenceQualityEngine -> EvidenceQualityAssessment[]\n(completeness/relevance/consistency/traceability);
+:Reviewer Workbench\n(APPROVE / REJECT / FLAG);
+:Governance filter\n(draft=all / validated=approved-only,\nrejected always excluded);
+
+partition "Linking" {
+  :link_review -> ReviewResult.evidence_refs;
+  :link_appeal -> AppealLetter.section_evidence\n(+ unsupported statements flagged);
+}
+
+:Export\n(evidence_inventory.json, traceability_report.md,\nevidence_quality.json, approved/excluded_evidence.json);
+stop
+
+@enduml

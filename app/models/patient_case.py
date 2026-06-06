@@ -19,6 +19,7 @@ class Decision(str, Enum):
     APPROVED = "approved"
     DENIED = "denied"
     PARTIAL = "partial"
+    PENDING = "pending"
     UNKNOWN = "unknown"
 
 
@@ -166,6 +167,8 @@ class PatientCase(BaseModel):
         text = str(v).strip().lower()
         if text in {"", "null", "none", "n/a", "unknown"}:
             return Decision.UNKNOWN
+        if any(k in text for k in ("pending", "in review", "under review")):
+            return Decision.PENDING
         if "partial" in text:
             return Decision.PARTIAL
         if any(k in text for k in ("approv", "favorable", "authorized", "certif")):

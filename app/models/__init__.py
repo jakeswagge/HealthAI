@@ -84,6 +84,16 @@ from app.models.governance import (
     GovernanceComplianceReport,
     GovernanceSettings,
 )
+from app.models.explanation import (
+    AppealExplanation,
+    EvidenceLineage,
+    ReviewExplanation,
+    TraceabilityChain,
+    new_appeal_explanation_id,
+    new_review_explanation_id,
+)
+from app.models.payer import KNOWN_PACKS, PayerProfile, PayerStatus
+from app.models.operational_health import OperationalHealthReport
 
 __all__ = [
     "DocumentType",
@@ -144,4 +154,14 @@ __all__ = [
     "ExcludedEvidence",
     "GovernanceComplianceReport",
     "GovernanceSettings",
+    "AppealExplanation",
+    "EvidenceLineage",
+    "ReviewExplanation",
+    "TraceabilityChain",
+    "new_appeal_explanation_id",
+    "new_review_explanation_id",
+    "KNOWN_PACKS",
+    "PayerProfile",
+    "PayerStatus",
+    "OperationalHealthReport",
 ]

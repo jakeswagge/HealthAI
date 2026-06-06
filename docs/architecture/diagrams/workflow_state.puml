@@ -1,0 +1,37 @@
+@startuml workflow_state
+title HealthAI - Case Status Lifecycle (app/cases/transitions.py)
+
+[*] --> NEW : create_case
+
+NEW --> EXTRACTED : assemble_case / attach_extraction
+NEW --> REJECTED
+
+EXTRACTED --> REVIEWED : attach_review
+EXTRACTED --> REJECTED
+
+REVIEWED --> APPEAL_GENERATED : attach_appeal
+REVIEWED --> REJECTED
+
+APPEAL_GENERATED --> PENDING_HUMAN_REVIEW : (auto on attach_appeal)
+APPEAL_GENERATED --> REJECTED
+
+PENDING_HUMAN_REVIEW --> APPROVED_FOR_EXPORT : human APPROVE
+PENDING_HUMAN_REVIEW --> REJECTED : human REJECT
+PENDING_HUMAN_REVIEW --> APPEAL_GENERATED : human REQUEST_CHANGES
+
+APPROVED_FOR_EXPORT --> REJECTED
+REJECTED --> APPEAL_GENERATED : reopen
+
+APPROVED_FOR_EXPORT --> [*] : export bundle
+
+note right of PENDING_HUMAN_REVIEW
+  REQUEST_CHANGES re-queues:
+  APPEAL_GENERATED -> PENDING_HUMAN_REVIEW
+end note
+
+note bottom
+  Every transition records a STATUS_CHANGED AuditEvent.
+  Illegal transitions raise InvalidTransitionError.
+end note
+
+@enduml

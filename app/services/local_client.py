@@ -35,6 +35,46 @@ CPT_RE = re.compile(r"\b(\d{5})\b")
 # surrounded by optional whitespace. Lets one parser handle both
 # "Label: value" and "Label ......... value" styles.
 SEP = r"\s*[:.]+\s*"
+FIELD_LABELS = {
+    "patient_name": (r"member\s+name", r"patient\s+name", r"patient", r"member"),
+    "member_id": (r"member\s*id", r"member\s*#", r"subscriber\s*id", r"id\s*#"),
+    "date_of_birth": (r"date\s+of\s+birth", r"dob"),
+    "diagnosis": (r"diagnosis", r"dx"),
+    "requested_service": (
+        r"requested\s+medication",
+        r"requested\s+drug",
+        r"requested\s+treatment",
+        r"requested\s+service",
+        r"procedure",
+        r"service",
+        r"medication",
+    ),
+    "insurance_company": (
+        r"payer",
+        r"insurance\s+company",
+        r"health\s+plan",
+        r"insurer",
+    ),
+    "physician_name": (
+        r"requesting\s+provider",
+        r"ordering\s+provider",
+        r"requesting\s+physician",
+        r"physician",
+        r"provider",
+    ),
+}
+ALL_LABELS = tuple(
+    label for labels in FIELD_LABELS.values() for label in labels
+) + (
+    r"request\s+status",
+    r"status",
+    r"decision",
+    r"determination",
+    r"reason(?:\s+for\s+denial)?",
+    r"rationale",
+)
+NEXT_LABEL_RE = re.compile(rf"\s+(?=(?:{'|'.join(ALL_LABELS)}){SEP})", re.IGNORECASE)
+ANY_LABEL_RE = re.compile(rf"^\s*(?:{'|'.join(ALL_LABELS)}){SEP}", re.IGNORECASE)
 
 
 def _extract_document_text(messages: list[dict[str, str]]) -> str:
@@ -58,34 +98,117 @@ def _find(pattern: str, text: str, group: int = 1) -> str | None:
     return value or None
 
 
-def _clean_name(value: str | None) -> str | None:
+def _clean_value(value: str | None) -> str | None:
     if not value:
         return None
-    # Stop at line breaks and collapse internal whitespace.
-    value = value.splitlines()[0].strip()
-    value = re.sub(r"\s{2,}", " ", value)
+    value = NEXT_LABEL_RE.split(value.splitlines()[0].strip(), maxsplit=1)[0]
+    value = re.sub(r"\s{2,}", " ", value).strip(" .")
     return value or None
 
 
+def _is_placeholder_or_prose(value: str | None) -> bool:
+    if not value:
+        return False
+    low = value.strip().lower()
+    if low in {
+        "documentation was not available",
+        "not available",
+        "n/a",
+        "na",
+        "none",
+        "unknown",
+    }:
+        return True
+    return any(
+        phrase in low
+        for phrase in (
+            "based on the review",
+            "appears to meet",
+            "medical-necessity criteria",
+            "medical necessity criteria",
+            "additional clinical evidence",
+            "documentation was not available",
+        )
+    )
+
+
+def _field_value(field: str, text: str) -> str | None:
+    labels = FIELD_LABELS[field]
+    pattern = re.compile(rf"\b(?:{'|'.join(labels)}){SEP}(.*)$", re.IGNORECASE)
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        match = pattern.search(line)
+        if not match:
+            continue
+        raw = match.group(1).strip()
+        if not raw:
+            for follow in lines[index + 1:]:
+                candidate = follow.strip()
+                if not candidate:
+                    continue
+                if ANY_LABEL_RE.search(candidate):
+                    break
+                raw = candidate
+                break
+        value = _clean_value(raw)
+        if value:
+            return value
+    return None
+
+
+def _clean_name(value: str | None) -> str | None:
+    if not value:
+        return None
+    return _clean_value(value)
+
+
 def _detect_decision(text: str) -> str:
-    lowered = text.lower()
     # Look for explicit status lines first.
-    status = _find(r"status\s*:\s*([a-z ]+)", text)
-    if status:
+    for match in re.finditer(
+        rf"\b(?:request\s+status|status|decision|determination){SEP}([^\n]+)",
+        text,
+        re.IGNORECASE,
+    ):
+        status = _clean_value(match.group(1))
+        if not status:
+            continue
         s = status.lower()
+        if any(k in s for k in ("pending", "in review", "under review")):
+            return "pending"
         if "partial" in s:
             return "partial"
         if "deni" in s:
             return "denied"
-        if "approv" in s:
+        if "approv" in s or "authoriz" in s:
             return "approved"
-    if "partially approved" in lowered or "partial approval" in lowered:
-        return "partial"
-    if any(k in lowered for k in ("adverse determination", "denied", "denial", "not medically necessary")):
-        return "denied"
-    if any(k in lowered for k in ("favorable determination", "approved", "authorized", "certif")):
-        return "approved"
-    return "unknown"
+
+    for line in text.splitlines():
+        low = line.lower()
+        if re.search(r"\b(if|when|unless)\b.*\b(denied|denial)\b", low):
+            continue
+        if any(
+            k in low
+            for k in (
+                "adverse determination",
+                "coverage is denied",
+                "request is denied",
+                "has been denied",
+                "not medically necessary",
+            )
+        ):
+            return "denied"
+        if any(
+            k in low
+            for k in (
+                "favorable determination",
+                "coverage is approved",
+                "request is approved",
+                "has been approved",
+                "authorized for",
+            )
+        ):
+            return "approved"
+    return "pending"
 
 
 def _extract_denial_reason(text: str, decision: str) -> str | None:
@@ -120,41 +243,26 @@ def _parse(document_text: str) -> dict:
     """Parse known prior-authorization fields from raw document text."""
     text = document_text
 
-    patient_name = _clean_name(
-        _find(rf"(?:member\s+name|patient\s+name|patient|member){SEP}(.+)", text)
-    )
-    member_id = _find(
-        rf"\b(?:member\s*id|member\s*#|subscriber\s*id|id\s*#){SEP}([A-Z0-9][A-Z0-9\-]+)",
-        text,
-    )
-    dob = _find(
-        rf"(?:date\s+of\s+birth|dob){SEP}([0-9]{{1,2}}/[0-9]{{1,2}}/[0-9]{{2,4}})",
-        text,
-    )
+    patient_name = _field_value("patient_name", text)
+    member_id = _field_value("member_id", text)
+    dob = _field_value("date_of_birth", text)
 
-    diagnosis = _clean_name(
-        _find(rf"(?:diagnosis|dx){SEP}(.+)", text)
-    )
+    diagnosis = _field_value("diagnosis", text)
     # Strip a leading ICD-10 code embedded in the diagnosis line.
     if diagnosis:
         diagnosis = re.sub(r"^[A-TV-Z][0-9][0-9AB](?:\.[0-9A-Z]{1,4})?\s*\(?", "", diagnosis)
         diagnosis = diagnosis.strip(" ()")
         diagnosis = re.sub(r"\s+", " ", diagnosis) or None
 
-    requested_service = _clean_name(
-        _find(rf"(?:procedure|requested\s+service|service){SEP}(.+)", text)
-    )
+    requested_service = _field_value("requested_service", text)
+    if _is_placeholder_or_prose(requested_service):
+        requested_service = None
 
-    insurance_company = _clean_name(
-        _find(rf"(?:payer|insurance\s+company|health\s+plan|insurer){SEP}(.+)", text)
-    )
+    insurance_company = _field_value("insurance_company", text)
+    if _is_placeholder_or_prose(insurance_company):
+        insurance_company = None
 
-    physician_name = _clean_name(
-        _find(
-            rf"(?:requesting\s+provider|ordering\s+provider|requesting\s+physician|physician|provider){SEP}(.+)",
-            text,
-        )
-    )
+    physician_name = _field_value("physician_name", text)
     if physician_name:
         # Drop trailing specialty in parens kept by some layouts? Keep as-is;
         # but strip an "NPI" fragment if it bled onto the same line.
@@ -189,7 +297,7 @@ def _parse(document_text: str) -> dict:
             requested_service,
             cpt_codes,
             insurance_company,
-            decision != "unknown",
+            decision not in {"unknown", "pending"},
             physician_name,
         ]
     )

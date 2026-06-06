@@ -40,24 +40,213 @@ FACT_TYPES: tuple[str, ...] = (
 
 _SEP = r"\s*[:.]+\s*"
 
+_FIELD_LABELS: dict[str, tuple[str, ...]] = {
+    "patient_name": (r"member\s+name", r"patient\s+name", r"patient", r"member"),
+    "member_id": (r"member\s*id", r"member\s*#", r"subscriber\s*id", r"id\s*#"),
+    "date_of_birth": (r"date\s+of\s+birth", r"dob"),
+    "diagnosis": (r"diagnosis", r"dx"),
+    "requested_service": (
+        r"requested\s+medication",
+        r"requested\s+drug",
+        r"requested\s+treatment",
+        r"requested\s+service",
+        r"procedure",
+        r"service",
+        r"medication",
+    ),
+    "insurance_company": (
+        r"payer",
+        r"insurance\s+company",
+        r"health\s+plan",
+        r"insurer",
+    ),
+    "physician_name": (
+        r"requesting\s+provider",
+        r"ordering\s+provider",
+        r"requesting\s+physician",
+        r"physician",
+        r"provider",
+    ),
+}
+
+_ALL_LABELS = tuple(
+    label
+    for labels in _FIELD_LABELS.values()
+    for label in labels
+) + (
+    r"request\s+status",
+    r"status",
+    r"decision",
+    r"determination",
+    r"reason(?:\s+for\s+denial)?",
+    r"rationale",
+)
+_NEXT_LABEL_RE = re.compile(
+    rf"\s+(?=(?:{'|'.join(_ALL_LABELS)}){_SEP})",
+    re.IGNORECASE,
+)
+_ANY_LABEL_RE = re.compile(
+    rf"^\s*(?:{'|'.join(_ALL_LABELS)}){_SEP}",
+    re.IGNORECASE,
+)
+
 ICD10_RE = re.compile(r"\b([A-TV-Z][0-9][0-9AB](?:\.[0-9A-Z]{1,4})?)\b")
 CPT_RE = re.compile(r"\b(\d{5})\b")
 
-# Single-line "label: value" patterns. Group 1 = value.
-_LINE_PATTERNS: dict[str, str] = {
-    "patient_name": rf"(?:member\s+name|patient\s+name|patient|member){_SEP}(.+)",
-    "member_id": rf"\b(?:member\s*id|member\s*#|subscriber\s*id|id\s*#){_SEP}([A-Z0-9][A-Z0-9\-]+)",
-    "date_of_birth": rf"(?:date\s+of\s+birth|dob){_SEP}([0-9]{{1,2}}/[0-9]{{1,2}}/[0-9]{{2,4}})",
-    "diagnosis": rf"(?:diagnosis|dx){_SEP}(.+)",
-    "requested_service": rf"(?:procedure|requested\s+service|service){_SEP}(.+)",
-    "insurance_company": rf"(?:payer|insurance\s+company|health\s+plan|insurer){_SEP}(.+)",
-    "physician_name": rf"(?:requesting\s+provider|ordering\s+provider|requesting\s+physician|physician|provider){_SEP}(.+)",
-}
+_CRITERION_PHRASES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "criterion_specialist",
+        (
+            "reviewed by rheumatology service",
+            "under care of rheumatology",
+            "board-certified rheumatologist",
+            "rheumatology consultation",
+            "specialist consultation",
+            "rheumatology clinic",
+            "specialist evaluation",
+            "evaluated by rheumatology",
+            "evaluated by specialist",
+            "referred to rheumatology",
+            "consulting rheumatologist",
+            "seen by specialist",
+            "rheumatologist",
+            "rheumatology",
+            "specialist",
+            "gastroenterologist",
+            "dermatologist",
+        ),
+    ),
+    (
+        "criterion_tb_screen",
+        (
+            "quantiferon-tb gold negative",
+            "tuberculosis screening negative",
+            "tuberculosis test negative",
+            "latent tb screening",
+            "negative tb result",
+            "quantiferon gold",
+            "quantiferon-tb",
+            "tb test negative",
+            "negative tb screen",
+            "tb screen negative",
+            "t-spot",
+            "quantiferon",
+            "tb test",
+            "tb screen",
+            "tuberculosis",
+        ),
+    ),
+    (
+        "criterion_step_therapy",
+        (
+            "persistent symptoms despite methotrexate",
+            "uncontrolled disease on methotrexate",
+            "inadequate response to methotrexate",
+            "conventional dmard failure",
+            "refractory to methotrexate",
+            "methotrexate ineffective",
+            "failed methotrexate",
+            "methotrexate trial",
+            "dmard failure",
+            "step therapy",
+            "conventional therapy",
+            "methotrexate",
+            "dmard",
+            "failed",
+        ),
+    ),
+)
+
+_NEGATION_BEFORE_RE = re.compile(
+    r"\b(no|not|without|absent|missing|lacks?|lack of|undocumented)\b"
+    r"(?:\W+\w+){0,5}\W*$",
+    re.IGNORECASE,
+)
+_NEGATION_AFTER_RE = re.compile(
+    r"^\W*(?:\w+\W+){0,4}"
+    r"\b(not documented|not performed|not available|was not performed|were not performed)\b",
+    re.IGNORECASE,
+)
+
+
+def _phrase_pattern(phrase: str) -> re.Pattern:
+    escaped = re.escape(phrase.strip())
+    escaped = escaped.replace(r"\ ", r"\s+")
+    escaped = escaped.replace(r"\-", r"[-\s]?")
+    return re.compile(rf"(?<!\w){escaped}(?!\w)", re.IGNORECASE)
+
+
+def _is_negated_context(text: str, start: int, end: int) -> bool:
+    before = text[max(0, start - 80):start]
+    after = text[end : min(len(text), end + 80)]
+    return bool(_NEGATION_BEFORE_RE.search(before) or _NEGATION_AFTER_RE.search(after))
+
+
+def _matched_positive_phrase(text: str, phrases: tuple[str, ...]) -> str | None:
+    for phrase in phrases:
+        for match in _phrase_pattern(phrase).finditer(text):
+            if _is_negated_context(text, match.start(), match.end()):
+                continue
+            return re.sub(r"\s+", " ", match.group(0)).strip()
+    return None
 
 
 def _clean(value: str) -> str:
-    value = value.splitlines()[0].strip()
+    value = _NEXT_LABEL_RE.split(value.splitlines()[0].strip(), maxsplit=1)[0]
     return re.sub(r"\s{2,}", " ", value).strip(" .")
+
+
+def _is_placeholder_or_prose(value: str) -> bool:
+    low = value.strip().lower()
+    if low in {
+        "documentation was not available",
+        "not available",
+        "n/a",
+        "na",
+        "none",
+        "unknown",
+    }:
+        return True
+    return any(
+        phrase in low
+        for phrase in (
+            "based on the review",
+            "appears to meet",
+            "medical-necessity criteria",
+            "medical necessity criteria",
+            "additional clinical evidence",
+            "documentation was not available",
+        )
+    )
+
+
+def _label_pattern(labels: tuple[str, ...]) -> re.Pattern:
+    return re.compile(rf"\b(?:{'|'.join(labels)}){_SEP}(.*)$", re.IGNORECASE)
+
+
+def _labeled_value(
+    lines: list[str], line_index: int, labels: tuple[str, ...]
+) -> tuple[str, str] | None:
+    """Return (value, quote) for a label, allowing value on the next line."""
+    match = _label_pattern(labels).search(lines[line_index])
+    if not match:
+        return None
+
+    quote = lines[line_index].strip()
+    raw = match.group(1).strip()
+    if not raw:
+        for follow in lines[line_index + 1:]:
+            candidate = follow.strip()
+            if not candidate:
+                continue
+            if _ANY_LABEL_RE.search(candidate):
+                break
+            raw = candidate
+            quote = f"{quote}\n{candidate}"
+            break
+
+    value = _clean(raw)
+    return (value, quote) if value else None
 
 
 def _section_label(line: str) -> str | None:
@@ -112,13 +301,13 @@ class EvidenceExtractor:
 
         lines = page_text.splitlines()
 
-        # --- single-line label/value facts ---
-        for fact_type, pattern in _LINE_PATTERNS.items():
-            for line in lines:
-                m = re.search(pattern, line, re.IGNORECASE)
-                if not m:
+        # --- label/value facts ---
+        for fact_type, labels in _FIELD_LABELS.items():
+            for index, line in enumerate(lines):
+                extracted = _labeled_value(lines, index, labels)
+                if extracted is None:
                     continue
-                value = _clean(m.group(1))
+                value, quoted_line = extracted
                 if fact_type == "diagnosis":
                     # Strip an embedded leading ICD-10 code from the value.
                     value = re.sub(
@@ -128,10 +317,15 @@ class EvidenceExtractor:
                     ).strip(" ()")
                 if fact_type == "physician_name":
                     value = re.split(r"\bNPI\b", value, flags=re.IGNORECASE)[0].strip()
+                if fact_type in {"requested_service", "insurance_company"}:
+                    if _is_placeholder_or_prose(value):
+                        continue
                 if not value:
                     continue
                 refs.append(
-                    self._make_ref(document, page_number, fact_type, value, line, 0.9)
+                    self._make_ref(
+                        document, page_number, fact_type, value, quoted_line, 0.9
+                    )
                 )
                 break  # first match per fact per page is enough
 
@@ -162,6 +356,26 @@ class EvidenceExtractor:
             line = self._find_line(lines, (code,)) or code
             refs.append(self._make_ref(document, page_number, "cpt_codes", code, line, 0.8))
 
+        seen_criteria: set[str] = set()
+        for line in lines:
+            for fact_type, phrases in _CRITERION_PHRASES:
+                if fact_type in seen_criteria:
+                    continue
+                matched = _matched_positive_phrase(line, phrases)
+                if not matched:
+                    continue
+                refs.append(
+                    self._make_ref(
+                        document,
+                        page_number,
+                        fact_type,
+                        matched,
+                        line,
+                        0.75,
+                    )
+                )
+                seen_criteria.add(fact_type)
+
         return refs
 
     # ------------------------------------------------------------------ #
@@ -188,19 +402,53 @@ class EvidenceExtractor:
 
     @staticmethod
     def _detect_decision(text: str) -> str | None:
-        lowered = text.lower()
-        m = re.search(r"status\s*:\s*([a-z ]+)", text, re.IGNORECASE)
-        if m:
-            s = m.group(1).lower()
-            if "partial" in s:
-                return "partial"
-            if "deni" in s:
+        for m in re.finditer(
+            rf"\b(?:request\s+status|status|decision|determination){_SEP}([^\n]+)",
+            text,
+            re.IGNORECASE,
+        ):
+            decision = EvidenceExtractor._decision_from_value(m.group(1))
+            if decision:
+                return decision
+
+        for line in text.splitlines():
+            low = line.lower()
+            if re.search(r"\b(if|when|unless)\b.*\b(denied|denial)\b", low):
+                continue
+            if any(
+                k in low
+                for k in (
+                    "adverse determination",
+                    "coverage is denied",
+                    "request is denied",
+                    "has been denied",
+                    "not medically necessary",
+                )
+            ):
                 return "denied"
-            if "approv" in s:
+            if any(
+                k in low
+                for k in (
+                    "favorable determination",
+                    "coverage is approved",
+                    "request is approved",
+                    "has been approved",
+                    "authorized for",
+                )
+            ):
                 return "approved"
-        if any(k in lowered for k in ("adverse determination", "denied", "denial", "not medically necessary")):
+        return None
+
+    @staticmethod
+    def _decision_from_value(value: str) -> str | None:
+        s = _clean(value).lower()
+        if any(k in s for k in ("pending", "in review", "under review")):
+            return "pending"
+        if "partial" in s:
+            return "partial"
+        if "deni" in s:
             return "denied"
-        if any(k in lowered for k in ("favorable determination", "approved", "authorized")):
+        if "approv" in s or "authoriz" in s:
             return "approved"
         return None
 

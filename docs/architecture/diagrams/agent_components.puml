@@ -1,0 +1,47 @@
+@startuml agent_components
+title HealthAI - Agents & the LLM Service Seam
+
+interface LLMClient {
+  +complete(system, messages, max_tokens, temperature) : LLMResponse
+  +is_ai : bool
+}
+
+class AnthropicClient
+class LocalHeuristicClient
+class MockClaudeClient
+
+LLMClient <|.. AnthropicClient
+LLMClient <|.. LocalHeuristicClient
+LLMClient <|.. MockClaudeClient
+
+class "factory.get_llm_client()" as Factory
+Factory --> LLMClient : selects backend\n(env / API key)
+
+class MedicalExtractionAgent
+class GuidelineReviewAgent
+class AppealGenerationAgent
+class ClaudeEvidenceExtractor
+
+MedicalExtractionAgent --> LLMClient
+GuidelineReviewAgent --> LLMClient
+AppealGenerationAgent --> LLMClient
+ClaudeEvidenceExtractor --> LLMClient
+
+class ClinicalReviewEngine
+class AppealLetterBuilder
+class EvidenceExtractor
+
+GuidelineReviewAgent ..> ClinicalReviewEngine : fallback (offline/fail)
+AppealGenerationAgent ..> AppealLetterBuilder : fallback / letter render
+ClaudeEvidenceExtractor ..> EvidenceExtractor : fallback (offline/invalid)
+
+note bottom
+  Every AI agent has a deterministic fallback so the
+  app + tests run with no API key. Output contracts
+  (PatientCase / ReviewResult / AppealLetter /
+  EvidenceReference) are identical either way.
+  ClaudeEvidenceExtractor adds an anti-fabrication
+  gate: a quote must appear verbatim in the source.
+end note
+
+@enduml

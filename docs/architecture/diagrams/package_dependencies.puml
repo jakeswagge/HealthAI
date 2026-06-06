@@ -1,0 +1,76 @@
+@startuml package_dependencies
+title HealthAI - Package Dependencies (current architecture)
+
+skinparam packageStyle rectangle
+skinparam shadowing false
+left to right direction
+
+package "ui" as ui
+package "cases\n(CaseService)" as cases
+package "models" as models
+package "services\n(LLM seam)" as services
+package "storage\n(SQLite)" as storage
+
+package "extraction" as extraction
+package "agents" as agents
+package "guidelines" as guidelines
+package "review" as review
+package "appeals" as appeals
+package "evidence" as evidence
+package "assembly" as assembly
+package "ingestion" as ingestion
+package "ocr" as ocr
+package "vision" as vision
+package "evidence_ai" as evidence_ai
+package "quality" as quality
+package "resolution" as resolution
+package "feedback" as feedback
+package "governance" as governance
+package "analytics" as analytics
+package "audit" as audit
+package "metrics" as metrics
+
+ui --> cases
+ui --> services
+
+cases --> agents
+cases --> review
+cases --> appeals
+cases --> assembly
+cases --> evidence
+cases --> evidence_ai
+cases --> ingestion
+cases --> ocr
+cases --> vision
+cases --> quality
+cases --> resolution
+cases --> feedback
+cases --> governance
+cases --> analytics
+cases --> guidelines
+cases --> audit
+cases --> storage
+
+agents --> services
+review --> services
+appeals --> services
+evidence_ai --> services
+
+agents --> models
+review --> models
+appeals --> models
+evidence --> models
+assembly --> models
+governance --> models
+analytics ..> cases : lazy import (avoids cycle)
+
+cases --> models
+audit --> storage
+metrics --> storage
+
+note bottom of models
+  models, services, storage are shared leaves.
+  No package imports ui.
+end note
+
+@enduml

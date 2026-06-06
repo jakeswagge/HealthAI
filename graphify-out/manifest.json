@@ -1,0 +1,1207 @@
+{
+  "C:\\HealthAI\\app\\__init__.py": {
+    "mtime": 1780067693.1539915,
+    "ast_hash": "7a876904a7f8664dd88fe4187366cc4e",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\agents\\__init__.py": {
+    "mtime": 1780069395.0586889,
+    "ast_hash": "0e9747d51fdb036fdd82e16b5f6ac19e",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\agents\\evaluation.py": {
+    "mtime": 1780071607.7815633,
+    "ast_hash": "d28d827dcaf04fa66dbe5b57458e3eed",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\agents\\medical_extraction_agent.py": {
+    "mtime": 1780140023.4389925,
+    "ast_hash": "545340375ce186569b1922c8df5e7ac1",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\agents\\prompts.py": {
+    "mtime": 1780069512.8613086,
+    "ast_hash": "73bb9e483af05e59303f0e1e2c954a06",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\analytics\\__init__.py": {
+    "mtime": 1780130489.5924451,
+    "ast_hash": "96d301d464e96769448b32fd97bd1d24",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\analytics\\quality_analytics.py": {
+    "mtime": 1780139680.736444,
+    "ast_hash": "4da8146c5a69fcc662ef3c3a61671b1f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\appeals\\__init__.py": {
+    "mtime": 1780110643.128563,
+    "ast_hash": "f756e19ba0470024a330ac8a42081524",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\appeals\\appeal_agent.py": {
+    "mtime": 1780743978.8449752,
+    "ast_hash": "9b85175ed43b7e62305b9962af8bbb25",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\appeals\\appeal_prompts.py": {
+    "mtime": 1780743993.8411787,
+    "ast_hash": "cf1dabc5043e5bee9f7637eed6d3be28",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\appeals\\builder.py": {
+    "mtime": 1780744263.2653847,
+    "ast_hash": "7544d041a5af9fc36713d53853e560bd",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\assembly\\__init__.py": {
+    "mtime": 1780118133.3214142,
+    "ast_hash": "125eb62ea1978e3522d0e28aad699ee9",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\assembly\\engine.py": {
+    "mtime": 1780335583.671155,
+    "ast_hash": "71272951970829b18665bf0b6dde0d72",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\assembly\\traceability.py": {
+    "mtime": 1780115545.407531,
+    "ast_hash": "5f80ad4e392de0d03220936fa463340c",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\audit\\__init__.py": {
+    "mtime": 1780112936.6918738,
+    "ast_hash": "2bbd09fc71ad62baeeadd2513106c78c",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\audit\\repository.py": {
+    "mtime": 1780112962.6559474,
+    "ast_hash": "2ac67167de97141588cd0fb541ebf0f7",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\__init__.py": {
+    "mtime": 1780139338.2563896,
+    "ast_hash": "a1b103f6ede3d810d95c7d7555d2218e",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\analytics_service.py": {
+    "mtime": 1780142864.677085,
+    "ast_hash": "2b2702b3e939693972bc1f6a728c13c0",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\appeal_service.py": {
+    "mtime": 1780142855.4689867,
+    "ast_hash": "1a7b726eebc09eaba05cd24c01e4b558",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\assembly_service.py": {
+    "mtime": 1780115775.4199193,
+    "ast_hash": "9859cff3bb1bf7c7bd34f4a300139355",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\document_repository.py": {
+    "mtime": 1780118392.206247,
+    "ast_hash": "16565924cb9770e9fa5d9b02db1471d5",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\evidence_repository.py": {
+    "mtime": 1780115428.4551055,
+    "ast_hash": "42c88d483981c6f6e392dca072cbc280",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\evidence_service.py": {
+    "mtime": 1780142753.1815028,
+    "ast_hash": "b46e83cffd32818bfe85674d6de8eff9",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\explainability_service.py": {
+    "mtime": 1780145662.749127,
+    "ast_hash": "79d2a57aba19d65e3eb7c4fc0193321d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\export.py": {
+    "mtime": 1780148219.7759187,
+    "ast_hash": "868de5dd821f51c6ead6ca355137a550",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\export_service.py": {
+    "mtime": 1780142893.906212,
+    "ast_hash": "8519223553a5da485e71b289a280e3b4",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\governance_service.py": {
+    "mtime": 1780142785.6052878,
+    "ast_hash": "fd697a0ca7d10591c5dc013fa336bbd8",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\ingestion_service.py": {
+    "mtime": 1780142709.5993538,
+    "ast_hash": "0b7cad6c9f8d0cb6374d5f432eda6d75",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\lifecycle.py": {
+    "mtime": 1780142531.7177603,
+    "ast_hash": "15fe7cfc7cb65bd86373176c2eabafb2",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\payer_service.py": {
+    "mtime": 1780147875.5806065,
+    "ast_hash": "8bb7c4d1e481819ef00025cf07ad6ed6",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\repository.py": {
+    "mtime": 1780113068.986596,
+    "ast_hash": "2062fb8be2f0a4a51cb6ae9cfdee31fc",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\resolution_service.py": {
+    "mtime": 1780142809.4369452,
+    "ast_hash": "f9cc68dd637c25892b70af13518fc1ab",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\review_service.py": {
+    "mtime": 1780142841.17889,
+    "ast_hash": "c6c0fbf31da21bf276fb32fa535c95e2",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\service.py": {
+    "mtime": 1780148169.5096061,
+    "ast_hash": "db8a0d8f8b21bc63f39e18cdf2aa45b2",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\cases\\transitions.py": {
+    "mtime": 1780113021.5407648,
+    "ast_hash": "3f3403c8981974b5e137a751c773cd2f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\evidence\\__init__.py": {
+    "mtime": 1780118786.5679653,
+    "ast_hash": "8966f37bfe0047566276b94754c1fad2",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\evidence\\extractor.py": {
+    "mtime": 1780754612.3045502,
+    "ast_hash": "39a798e817d742a2242dbb70f8f84b8e",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\evidence\\linker.py": {
+    "mtime": 1780754635.618123,
+    "ast_hash": "6c7b6fc1b89b65e7c2f767ca64324179",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\evidence\\repository.py": {
+    "mtime": 1780118426.701909,
+    "ast_hash": "43633a353505190d45b076bd781b77e5",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\evidence_ai\\__init__.py": {
+    "mtime": 1780126398.278478,
+    "ast_hash": "b10b92615dd75fc388141fd2ee285eea",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\evidence_ai\\extractor.py": {
+    "mtime": 1780140401.9266944,
+    "ast_hash": "1f135501c2bccd693ff8828f703f4fbf",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\explainability\\__init__.py": {
+    "mtime": 1780145534.8801959,
+    "ast_hash": "e6cd17221b0afb149f93f0afa6304818",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\explainability\\engine.py": {
+    "mtime": 1780145580.7484677,
+    "ast_hash": "70989c4915539dbe07672fb21fb9ccdf",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\extraction\\__init__.py": {
+    "mtime": 1780115166.9672248,
+    "ast_hash": "eee7234f31a84d527ff3297c8f2d9ee6",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\extraction\\extractor.py": {
+    "mtime": 1780115124.4485948,
+    "ast_hash": "345b2631cd52b8a61245dad38e7ea719",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\extraction\\size_validator.py": {
+    "mtime": 1780109002.9594622,
+    "ast_hash": "01b5ed984001d18e7f45bc630b062569",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\extraction\\validation.py": {
+    "mtime": 1780067762.6568975,
+    "ast_hash": "c5c51428bdc2dfa73db6e20e0323ac0e",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\feedback\\__init__.py": {
+    "mtime": 1780120913.9149847,
+    "ast_hash": "0b1aaab1c1b40fc0654cb88ec4c54238",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\feedback\\dataset.py": {
+    "mtime": 1780120983.4615688,
+    "ast_hash": "2d23a83a4950053640ed8b4d42f719dd",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\feedback\\repository.py": {
+    "mtime": 1780120942.99736,
+    "ast_hash": "65cb3d022c4d4f9cc39c6558544031d7",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\governance\\__init__.py": {
+    "mtime": 1780129225.2319355,
+    "ast_hash": "15bfb2b65d799f8fd22c15f590d9c652",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\governance\\compliance.py": {
+    "mtime": 1780130045.5031,
+    "ast_hash": "22f7330111bd74f2a08bf9791e1c0cd7",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\governance\\engine.py": {
+    "mtime": 1780129544.1723838,
+    "ast_hash": "6c00e9595cbdc33e310497629a6eed93",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\governance\\repository.py": {
+    "mtime": 1780129516.6684809,
+    "ast_hash": "902316c8101d05366f1162ca15e9e64d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\guidelines\\__init__.py": {
+    "mtime": 1780078155.6069782,
+    "ast_hash": "fc4092c1699437c51d26de714feebfea",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\guidelines\\repository.py": {
+    "mtime": 1780078253.7220564,
+    "ast_hash": "f8cb39bae3f63cf5aff45af4beec484d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ingestion\\__init__.py": {
+    "mtime": 1780123868.677141,
+    "ast_hash": "fa9123b499cbf69b7fa0fc6e6084a64c",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ingestion\\classifier.py": {
+    "mtime": 1780123905.567555,
+    "ast_hash": "1122c24c291658f9876e139fd7591467",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ingestion\\engine.py": {
+    "mtime": 1780123972.1763916,
+    "ast_hash": "3dc36fb2069df777e6e0ce81c54d9669",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\metrics\\__init__.py": {
+    "mtime": 1780113133.363556,
+    "ast_hash": "9fbc055d4e866786c1d5c24f88b18f8c",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\metrics\\collector.py": {
+    "mtime": 1780113167.777002,
+    "ast_hash": "62a5bfda0dea0caa90a248e588188195",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\__init__.py": {
+    "mtime": 1780148337.885606,
+    "ast_hash": "c669e5ec8d961d45274a31bf111f92b3",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\appeal_letter.py": {
+    "mtime": 1780147842.2510104,
+    "ast_hash": "71c031126088e43cbe4fa12daa5843c1",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\audit_event.py": {
+    "mtime": 1780145684.7160013,
+    "ast_hash": "e1d43fcc3c6bbbef7f2d4a86814791bf",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\case_document.py": {
+    "mtime": 1780117619.0419593,
+    "ast_hash": "6747072c92e7f26988e1c8acf6b3c1af",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\case_record.py": {
+    "mtime": 1780112777.753974,
+    "ast_hash": "8052f64f3339e7c50499b5ad0eea1693",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\clinical_guideline.py": {
+    "mtime": 1780077848.294614,
+    "ast_hash": "0ab6775ceac2e0f971afca7486431dbb",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\conflict_report.py": {
+    "mtime": 1780120407.9860208,
+    "ast_hash": "14b94ddfe1c996087c8e391d580a4a32",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\conflict_resolution.py": {
+    "mtime": 1780120470.6838818,
+    "ast_hash": "3a6a9dd924e16676040a393a24a4bb7d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\document.py": {
+    "mtime": 1780067726.525331,
+    "ast_hash": "783de9b5fa0f55bd6fed640dc831f6b9",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\evidence.py": {
+    "mtime": 1780115007.3591914,
+    "ast_hash": "9db946f61c16b0b9314f18b54361cb80",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\evidence_quality.py": {
+    "mtime": 1780126221.612772,
+    "ast_hash": "5ac9ac892958a9ae66ce6941306f17a1",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\evidence_reference.py": {
+    "mtime": 1780117719.9894652,
+    "ast_hash": "259732cd567601d04bc9d0e24dbe3198",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\evidence_review_decision.py": {
+    "mtime": 1780126260.7486398,
+    "ast_hash": "31733f10412d55c73ac384e3c741a6a6",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\explanation.py": {
+    "mtime": 1780145521.0699377,
+    "ast_hash": "94b5506dec9721b1a4ecf61dbf93adf5",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\governance.py": {
+    "mtime": 1780128726.896621,
+    "ast_hash": "d169bb8fc16e20b75f9e9ad4b252864f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\ocr_result.py": {
+    "mtime": 1780123366.4522116,
+    "ast_hash": "3060538e971c8d46681e1f54a420d2fd",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\operational_health.py": {
+    "mtime": 1780147593.636383,
+    "ast_hash": "ce7ea230a7450d4a627e73d3f16c27cc",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\patient_case.py": {
+    "mtime": 1780335472.933321,
+    "ast_hash": "240d9d6e31ab16af530d8a6fe097acac",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\payer.py": {
+    "mtime": 1780147574.7302816,
+    "ast_hash": "d96155f7c2df9c1e2f360cc912572e3f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\review_result.py": {
+    "mtime": 1780147821.4042726,
+    "ast_hash": "3c7d218be6bb20ba21bec3ba0e41db79",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\reviewer_feedback.py": {
+    "mtime": 1780120506.5672095,
+    "ast_hash": "c6f817fa4887148c67c8d2d74478c450",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\models\\unified_case_context.py": {
+    "mtime": 1780117767.273389,
+    "ast_hash": "558c1c91b4d6139d66cfba4d2c9fc5ef",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ocr\\__init__.py": {
+    "mtime": 1780123821.0416818,
+    "ast_hash": "acb3baefb27a96b12d581a9206ffa42e",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ocr\\base.py": {
+    "mtime": 1780109097.3332126,
+    "ast_hash": "15d4a6ea726432f736d0fd86202bf7b5",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ocr\\factory.py": {
+    "mtime": 1780109292.0649228,
+    "ast_hash": "513f328247af995ff631909c6c419c4c",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ocr\\placeholder.py": {
+    "mtime": 1780109276.0017862,
+    "ast_hash": "4d482aca4abc5ab9f2861b5044386187",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ocr\\providers.py": {
+    "mtime": 1780123794.4642067,
+    "ast_hash": "e5bb2e26dec470a4436b5c5895be90c5",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ocr\\repository.py": {
+    "mtime": 1780124171.1026006,
+    "ast_hash": "b577d6f34dbfa480a41e526fdf38bd7e",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\operations\\__init__.py": {
+    "mtime": 1780147887.166751,
+    "ast_hash": "38782a4873e7f39bc0d4f2e738b1b898",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\operations\\health.py": {
+    "mtime": 1780147947.437763,
+    "ast_hash": "cf52fd812ed0f08843b39ab26062dfe8",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\payers\\__init__.py": {
+    "mtime": 1780147759.877073,
+    "ast_hash": "007e9cc0a0f85539522b1bf58ee1981a",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\payers\\packs.py": {
+    "mtime": 1780147806.7133176,
+    "ast_hash": "80fd6cf61a78b7e86d2778e4e27d6f6b",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\payers\\repository.py": {
+    "mtime": 1780147780.2539752,
+    "ast_hash": "2b2e5136b1b9335e8299ba7e6f3cb34a",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\quality\\__init__.py": {
+    "mtime": 1780126861.1291037,
+    "ast_hash": "b6c947b7fcb1680d5c767a8aa2850295",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\quality\\decision_repository.py": {
+    "mtime": 1780126781.756977,
+    "ast_hash": "06130dfe1140161405604bd6e9fa6bdc",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\quality\\engine.py": {
+    "mtime": 1780126560.3069153,
+    "ast_hash": "86cc014bb603727b9fceffae30fccd06",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\quality\\repository.py": {
+    "mtime": 1780126734.615944,
+    "ast_hash": "1aa49e1d6d93eb8958cb9f04706525c4",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\quality\\workbench.py": {
+    "mtime": 1780126846.9646757,
+    "ast_hash": "7f3c650d91ee49cc8c0346d8d1397cbc",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\resolution\\__init__.py": {
+    "mtime": 1780120738.664298,
+    "ast_hash": "e3bec78b569bc7bf8c8f008caf3cb183",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\resolution\\engine.py": {
+    "mtime": 1780120887.3227723,
+    "ast_hash": "5b923267b9d7cc742fe20a28bf9e3f8a",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\resolution\\repository.py": {
+    "mtime": 1780120839.4490042,
+    "ast_hash": "685bc95bf299126fdced9f9576a83897",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\review\\__init__.py": {
+    "mtime": 1780078272.781493,
+    "ast_hash": "d1b29e3eabdfd6b162a46b97da4470c4",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\review\\engine.py": {
+    "mtime": 1780754570.7500434,
+    "ast_hash": "03698dc72d97a99a59d6870e10b03592",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\review\\evaluation.py": {
+    "mtime": 1780078485.821821,
+    "ast_hash": "0ad59f4233309b3d4740c1156af1c700",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\review\\review_agent.py": {
+    "mtime": 1780140129.8651917,
+    "ast_hash": "f856a78a6d9a82504369c1d0d5bd59b2",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\review\\review_prompts.py": {
+    "mtime": 1780078401.3314903,
+    "ast_hash": "8bd3990b5fb85ae81672c7a7caaae242",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\services\\__init__.py": {
+    "mtime": 1780108959.7464132,
+    "ast_hash": "5c733ce34757c9d787ea2e2814117ab7",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\services\\anthropic_client.py": {
+    "mtime": 1780069718.5496256,
+    "ast_hash": "8d26e0e654092da6ec4e8d57ccb2084d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\services\\factory.py": {
+    "mtime": 1780070047.9173295,
+    "ast_hash": "6818bf065c5dba155f3ecd10eaad6ed9",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\services\\json_utils.py": {
+    "mtime": 1780139897.2457,
+    "ast_hash": "ffefa67d41467ce61ab0104ec835fe32",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\services\\llm_client.py": {
+    "mtime": 1780069695.7973585,
+    "ast_hash": "c6810d59256bfc1188631be8032e317a",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\services\\local_client.py": {
+    "mtime": 1780732804.83259,
+    "ast_hash": "34d190ae81aa17163049901525c2d0cc",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\services\\mock_claude_client.py": {
+    "mtime": 1780108940.8201215,
+    "ast_hash": "578defcfd669c14efb4abcea2ee50baa",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\storage\\__init__.py": {
+    "mtime": 1780112885.696386,
+    "ast_hash": "78bfbf6e2695953bc5f92e51dff17a86",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\storage\\database.py": {
+    "mtime": 1780130552.738211,
+    "ast_hash": "10b26bcf284793540c8a1407348bd352",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\__init__.py": {
+    "mtime": 1780068018.7314205,
+    "ast_hash": "cc08bd9ec40424317f4d5a33fd80f12d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\conftest.py": {
+    "mtime": 1780070983.6038387,
+    "ast_hash": "5177621b6307506e3cb40b74edf9d39f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\ground_truth.py": {
+    "mtime": 1780070949.478661,
+    "ast_hash": "fd2943fa22f1b1585b4f75af7acdc394",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\review_scenarios.py": {
+    "mtime": 1780078701.3533258,
+    "ast_hash": "a8153d2dd50ce21209d409ae9829b6cc",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_appeal_agent.py": {
+    "mtime": 1780744202.0509214,
+    "ast_hash": "fbfaf495ac8380baa8272291c708c38b",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_appeal_builder.py": {
+    "mtime": 1780335693.713552,
+    "ast_hash": "b1861659d907d1a993802cf2222b68b0",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_appeal_model.py": {
+    "mtime": 1780111131.4720426,
+    "ast_hash": "cb2cbcf57e4ab0e0d9467be227230a16",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_appeal_safety_state_awareness.py": {
+    "mtime": 1780744146.484904,
+    "ast_hash": "3d4a10d027b35a0275af2045a88b125a",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_architecture.py": {
+    "mtime": 1780148668.68494,
+    "ast_hash": "7c80a0b3972f6888154c78f29b7d1939",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_case_assembly.py": {
+    "mtime": 1780119169.8175013,
+    "ast_hash": "2a6183bd25a4171f13f2f2dc723e0e19",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_case_management.py": {
+    "mtime": 1780113416.5552824,
+    "ast_hash": "9dc08ebf60818ce5dd017ad8728ca598",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_conflict_resolution.py": {
+    "mtime": 1780121224.6025822,
+    "ast_hash": "b8122fd372eb4c4b8b762ea7be7e41f6",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_evaluation.py": {
+    "mtime": 1780075580.4790285,
+    "ast_hash": "cdc10edf3d0741b7cdca050a3e6cd0f6",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_evidence_extraction.py": {
+    "mtime": 1780119124.206077,
+    "ast_hash": "ea1472ce5077bbc7bf32dbae2af3dd30",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_evidence_quality_workbench.py": {
+    "mtime": 1780127545.8756132,
+    "ast_hash": "9c1b06484dfd2018be5dcc0ce6d13995",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_evidence_traceability.py": {
+    "mtime": 1780119253.1101263,
+    "ast_hash": "986917ab7b95b83a87766cf7c082e833",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_extraction_agent.py": {
+    "mtime": 1780071482.0966463,
+    "ast_hash": "03ddaab78bdd304f51a149649bf14ea1",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_governance_analytics.py": {
+    "mtime": 1780134683.9053726,
+    "ast_hash": "df80204d36e5297cc9e54bfaa1eb609e",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_governance_explainability.py": {
+    "mtime": 1780146147.1371999,
+    "ast_hash": "7e4848a33299008da7ed5d3e36b7262d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_guidelines.py": {
+    "mtime": 1780078731.963412,
+    "ast_hash": "0c2191ca0c14401d70a20db70b6d35dc",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_healthcare_safety_regressions.py": {
+    "mtime": 1780732735.4850137,
+    "ast_hash": "cbf252523507a6bf8fb405621b315c42",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_local_client.py": {
+    "mtime": 1780071556.7987628,
+    "ast_hash": "6d6c12192beefbff46ff635dfe1e7f71",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_mock_claude_client.py": {
+    "mtime": 1780109565.5794456,
+    "ast_hash": "baa1f5e0f769164ad7617d0523a9a7ce",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_ocr_abstraction.py": {
+    "mtime": 1780109607.0529532,
+    "ast_hash": "ec4277b4311c47b5edb911ab8d8898b0",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_ocr_ingestion.py": {
+    "mtime": 1780124648.4443178,
+    "ast_hash": "453af675eecd3740636ef9999c7aaa1b",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_patient_case_model.py": {
+    "mtime": 1780733198.8706403,
+    "ast_hash": "37da39c6ca5d3b7db3be49844f179412",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_payer_packs_operations.py": {
+    "mtime": 1780148527.2059748,
+    "ast_hash": "21d4699180f533bc09b1b76d06734ff4",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_pdf_extraction.py": {
+    "mtime": 1780068199.7686706,
+    "ast_hash": "4bc45be7a13ee0cb9019d6a43d0b1088",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_review_agent.py": {
+    "mtime": 1780078828.3915896,
+    "ast_hash": "7c8fe1361aa220850448211a9003661b",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_review_agent_mock.py": {
+    "mtime": 1780109675.3130476,
+    "ast_hash": "6123c17056c0accac8492ddf0416b187",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_review_engine.py": {
+    "mtime": 1780078763.5836518,
+    "ast_hash": "cd7addbac683d040227ce1a8ec00d632",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_review_evaluation.py": {
+    "mtime": 1780078859.268555,
+    "ast_hash": "96a91a7bb8c686dae054777d844dd61f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_review_heuristic_vocabulary.py": {
+    "mtime": 1780754853.0016742,
+    "ast_hash": "b35b343ffaf7526d08a7a3745ddae89e",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_select_or_create_case_keys.py": {
+    "mtime": 1780286222.057302,
+    "ast_hash": "7e9ef88293e05febdc9d399b72810c9c",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_selected_case_pipeline.py": {
+    "mtime": 1780748761.4264834,
+    "ast_hash": "6b48779b3523475d3af5a1199d0f7c54",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_session_state.py": {
+    "mtime": 1780109639.7339137,
+    "ast_hash": "64cf6103d44dd630943dc58a4986a743",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_size_validator.py": {
+    "mtime": 1780109589.80435,
+    "ast_hash": "1ab200ef61d7255d91e544d97d562569",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_streamlit_service_threading.py": {
+    "mtime": 1780287894.90786,
+    "ast_hash": "38fee0551582ab5579905e2692ce1b76",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_txt_extraction.py": {
+    "mtime": 1780068156.7646675,
+    "ast_hash": "4bf8a3590d42d9dcaf0fc896df7e57cb",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\tests\\test_validation.py": {
+    "mtime": 1780068052.427561,
+    "ast_hash": "4c09495ef3436f33579158b140f4aab6",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\__init__.py": {
+    "mtime": 1780067871.9014764,
+    "ast_hash": "5612aefb22018d4e906e7cf66ac0b872",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\case_ui.py": {
+    "mtime": 1780148293.8164186,
+    "ast_hash": "d8624f22f35a6dd15793c3bf6b2f8f24",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\dashboard.py": {
+    "mtime": 1780748673.5298097,
+    "ast_hash": "3b646f23d8d2e2f4041c59bc98545b46",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\session.py": {
+    "mtime": 1780748601.0416074,
+    "ast_hash": "9ea3ffe5568e8b99aabb18bd45b0975d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\tabs\\__init__.py": {
+    "mtime": 1780141948.4893737,
+    "ast_hash": "2167401de6dd302b663ce2d3aacc27ea",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\tabs\\assembly_tabs.py": {
+    "mtime": 1780285958.4190395,
+    "ast_hash": "c898c75bfcf9fce1cfa07095d3471cd3",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\tabs\\case_tabs.py": {
+    "mtime": 1780148234.0966227,
+    "ast_hash": "52d9cdb51b502c80d66d34e39c2ad912",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\tabs\\common.py": {
+    "mtime": 1780748616.8203664,
+    "ast_hash": "b13f1a421e53d8dfdd4dd5906ceb3b26",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\tabs\\evidence_quality_tabs.py": {
+    "mtime": 1780142135.6954212,
+    "ast_hash": "35907a00ef45e2b727e521b9f5c7b1cc",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\tabs\\explainability_tabs.py": {
+    "mtime": 1780145939.8912203,
+    "ast_hash": "f965031a23d45e0037105dbe2d2e126f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\tabs\\governance_tabs.py": {
+    "mtime": 1780142161.4817133,
+    "ast_hash": "8324679987f297b5b723d18012761dad",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\tabs\\ingestion_tabs.py": {
+    "mtime": 1780285959.135966,
+    "ast_hash": "8e0061c663b8b50003a7f3fe1122900b",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\tabs\\operations_tabs.py": {
+    "mtime": 1780148266.0384133,
+    "ast_hash": "0b336500639fda0ba3112b33a144cf09",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\ui\\tabs\\resolution_tabs.py": {
+    "mtime": 1780142105.034806,
+    "ast_hash": "086d7bf08c615a926e240a286cb3eacf",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\validation\\__init__.py": {
+    "mtime": 1780148078.29364,
+    "ast_hash": "d415d30a3fac14647f420ba2cd35606f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\validation\\runner.py": {
+    "mtime": 1780148110.1533315,
+    "ast_hash": "c5961482b4e73065080a3537994f1793",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\vision\\__init__.py": {
+    "mtime": 1780124005.7674756,
+    "ast_hash": "388fcd25d999d19f1fd614d7899d0c60",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\app\\vision\\extractor.py": {
+    "mtime": 1780124047.0779972,
+    "ast_hash": "3a545639b11e871074501d87e5a4a5ca",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\guideline_packs\\AETNA\\humira.json": {
+    "mtime": 1780147683.5072827,
+    "ast_hash": "2ea3017b1beb34edf7f4d875ec3abac9",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\guideline_packs\\CIGNA\\humira.json": {
+    "mtime": 1780147730.7269526,
+    "ast_hash": "27cc882fb7804df8f39d427c7461069b",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\guideline_packs\\HUMANA\\humira.json": {
+    "mtime": 1780147745.3637226,
+    "ast_hash": "48dc42c14eabc8295ccd12e5d309f3f9",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\guideline_packs\\MOCK_PAYER\\humira.json": {
+    "mtime": 1780147716.8740292,
+    "ast_hash": "90f6e5410631c6b28e5d7ff450bf9fe4",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\guideline_packs\\UNITEDHEALTHCARE\\humira.json": {
+    "mtime": 1780147699.0668542,
+    "ast_hash": "6ca10dc54a6eaf543719bb978cbea7fc",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\guidelines\\ct_chest.json": {
+    "mtime": 1780078110.478247,
+    "ast_hash": "f966b9676b0bc32491ced815c680f4f8",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\guidelines\\enbrel.json": {
+    "mtime": 1780078058.9240475,
+    "ast_hash": "54efa49257d19179075fa4356bed23f8",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\guidelines\\humira.json": {
+    "mtime": 1780078039.544875,
+    "ast_hash": "5bee7bc103dfa02c66b3235261684c42",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\guidelines\\mri_lumbar_spine.json": {
+    "mtime": 1780078088.2929344,
+    "ast_hash": "d17dc654c1e0bc069223140755038a8b",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\guidelines\\physical_therapy.json": {
+    "mtime": 1780078134.839229,
+    "ast_hash": "8c52447c98e0a89bfa6c7bc13914150d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\payers\\aetna.json": {
+    "mtime": 1780147620.4973035,
+    "ast_hash": "082efa03e9b9c91cf8832bf0454cd052",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\payers\\cigna.json": {
+    "mtime": 1780147640.6825435,
+    "ast_hash": "c3ad940dd183059c6fc4e5d3e316d15b",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\payers\\default.json": {
+    "mtime": 1780147607.615386,
+    "ast_hash": "95f07b4971c74c7a13720dd205516ec6",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\payers\\humana.json": {
+    "mtime": 1780147648.3926222,
+    "ast_hash": "824d37ced0343541d4755ccbb00a4885",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\payers\\mock_payer.json": {
+    "mtime": 1780147657.668823,
+    "ast_hash": "b9e9b3ce9f684c806d0a01e7cfd3474d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\payers\\unitedhealthcare.json": {
+    "mtime": 1780147630.96108,
+    "ast_hash": "39fbf95bd1c1b50857f65689ce6a8f90",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\graphify\\generate_graph.py": {
+    "mtime": 1780334955.6065986,
+    "ast_hash": "f1ae28458acab447391eb9c66737dd2a",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\streamlit_app.py": {
+    "mtime": 1780067950.682735,
+    "ast_hash": "a74c1781d7b29275479b59c7ae4832f1",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\validation\\__init__.py": {
+    "mtime": 1780147981.4348335,
+    "ast_hash": "bea7d3041c837c9e6b606efde8c3ca4d",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\validation\\datasets\\scenarios.json": {
+    "mtime": 1780148434.3244529,
+    "ast_hash": "50d9458526d3cafefd1bba742e8da9de",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\validation\\run.py": {
+    "mtime": 1780148481.882476,
+    "ast_hash": "c1eb54dc340e6c8f879c00e8316b01a8",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\.kiro\\specs\\fix-duplicate-streamlit-keys\\bugfix.md": {
+    "mtime": 1780285478.79548,
+    "ast_hash": "02490b039c0dc0797ecfed8557922696",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\.kiro\\specs\\fix-duplicate-streamlit-keys\\design.md": {
+    "mtime": 1780285543.8629074,
+    "ast_hash": "030c16c993fd02862df3c154c50f6afd",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\.kiro\\specs\\fix-duplicate-streamlit-keys\\tasks.md": {
+    "mtime": 1780286338.9141228,
+    "ast_hash": "7c9843a40792a6b8c173c89d42442604",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\README.md": {
+    "mtime": 1780135244.5292122,
+    "ast_hash": "169be774c59bd4eb76529a35a4180a25",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\approval_case_01.txt": {
+    "mtime": 1780068003.964334,
+    "ast_hash": "2181c091c4404f630419b1e2ea341d22",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\approval_case_02.txt": {
+    "mtime": 1780070342.1005523,
+    "ast_hash": "ebb4af04685cc36d895ccd6aac875a26",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\approval_case_03.txt": {
+    "mtime": 1780070357.757033,
+    "ast_hash": "cfc11bfe35987c96ee8191623a4f3c3a",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\approval_case_04.txt": {
+    "mtime": 1780070384.8973472,
+    "ast_hash": "a918feb775980bdac86243b79fd10924",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\approval_case_05.txt": {
+    "mtime": 1780070532.4656959,
+    "ast_hash": "1d0c2eaa0a3bcf39e6f77be9a1ac035c",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\denial_case_01.txt": {
+    "mtime": 1780067975.7216327,
+    "ast_hash": "6571294e0f739737f4396c71a20fed98",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\denial_case_02.txt": {
+    "mtime": 1780070544.9030676,
+    "ast_hash": "edb819c57bf65e98757c93a8d77fdcc3",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\denial_case_03.txt": {
+    "mtime": 1780070822.3234215,
+    "ast_hash": "2fd7f5008121434e1e341ca18f57fc55",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\denial_case_04.txt": {
+    "mtime": 1780070879.065585,
+    "ast_hash": "dec791590290086e4fab0a5ecf42c2de",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\denial_case_05.txt": {
+    "mtime": 1780070896.554506,
+    "ast_hash": "9e386cc648013abef77b398d368b0049",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\denial_case_06_humira.txt": {
+    "mtime": 1780078959.176335,
+    "ast_hash": "26f936f7d39e8b12ebfb4dcc61568295",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\multidoc_humira_denial.txt": {
+    "mtime": 1780118997.9551828,
+    "ast_hash": "4831eda632aafabfac6c14d3b55e6bc6",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\multidoc_humira_lab.txt": {
+    "mtime": 1780119082.4211657,
+    "ast_hash": "bcfa9114d7b51263998495ca379d3f90",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\data\\sample_docs\\multidoc_humira_note.txt": {
+    "mtime": 1780119041.395593,
+    "ast_hash": "5c523e07806315a94aa3d2d5aee6fc35",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\ARCHITECTURE_COMPLETE.md": {
+    "mtime": 1780149371.823763,
+    "ast_hash": "7464de969d44c2ca88e94ecf0975ad6f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\HANDOVER.md": {
+    "mtime": 1780149445.4015572,
+    "ast_hash": "87f6e04a0d610e0724b3503acf3d27ef",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\architecture\\README.md": {
+    "mtime": 1780137441.6006386,
+    "ast_hash": "d37243ff191f827c1d77666fe506ec23",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\architecture\\agent_map.md": {
+    "mtime": 1780137169.6231833,
+    "ast_hash": "31bcad6e8eb4b3e854d9d999c9c30db8",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\architecture\\database_schema.md": {
+    "mtime": 1780137089.8370354,
+    "ast_hash": "bb72112cd07811986e91e3dcaaf894b3",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\architecture\\evidence_flow.md": {
+    "mtime": 1780137204.7081435,
+    "ast_hash": "d7a4b8e38a3715d84e7bf73752932526",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\architecture\\governance_flow.md": {
+    "mtime": 1780137236.3025968,
+    "ast_hash": "f7b7c6fe48d56afa17c8e6d7debb1189",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\architecture\\package_map.md": {
+    "mtime": 1780137046.698289,
+    "ast_hash": "1875a2d6e0ca264ec12e4c5826514e0e",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\architecture\\system_overview.md": {
+    "mtime": 1780136993.366129,
+    "ast_hash": "0fa8280c257f4b91145c3259a199edab",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\architecture\\workflow_map.md": {
+    "mtime": 1780137134.901148,
+    "ast_hash": "309c358bc7829e2ea77d96ee9031d6fd",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\architecture_hardening.md": {
+    "mtime": 1780110035.9988146,
+    "ast_hash": "809df527549c150e0783bf572604848f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\architecture_review.md": {
+    "mtime": 1780138601.7377706,
+    "ast_hash": "2fcd1dd648eb0a8aaf028561af1e43c1",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\caching.md": {
+    "mtime": 1780109867.9840574,
+    "ast_hash": "c30b36e9cdd11fc3cd37aabf8f5fb069",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\environment.md": {
+    "mtime": 1780109900.4141552,
+    "ast_hash": "5be79f66ef6c72bfc9454ab9a484a5a5",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_1.md": {
+    "mtime": 1780068225.0082347,
+    "ast_hash": "99898caf181e46dce29f371de1601811",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_10.md": {
+    "mtime": 1780128000.0877564,
+    "ast_hash": "68f4b0759ab371be41074bdd636c2d2f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_11.md": {
+    "mtime": 1780135200.2486866,
+    "ast_hash": "ec5b03519763e9d462961a359aeba5dd",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_13.md": {
+    "mtime": 1780146300.579001,
+    "ast_hash": "2d2f1f44e44289f5a911ea877be29560",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_3.md": {
+    "mtime": 1780079319.8094666,
+    "ast_hash": "abf0846d2868cde3a2d22403bbdf54da",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_4.md": {
+    "mtime": 1780111762.4891002,
+    "ast_hash": "be9df94ef30e1db91d18efd033344cdb",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_5.md": {
+    "mtime": 1780114132.5490878,
+    "ast_hash": "072176f844a1ba99d92b52d9a7d1bd41",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_6_7.md": {
+    "mtime": 1780119964.6959414,
+    "ast_hash": "33593e0ce1aad18f475880871350b51f",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_8.md": {
+    "mtime": 1780121964.8394995,
+    "ast_hash": "a3ce96a198c5565752664497895a9fb8",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_9.md": {
+    "mtime": 1780125696.3221662,
+    "ast_hash": "b5f5199dfc5e05d7cddc90e4e0e953a2",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\milestone_final.md": {
+    "mtime": 1780148852.2599666,
+    "ast_hash": "701fd4255f11f64bda1a5476ed1883b1",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\docs\\production_readiness.md": {
+    "mtime": 1780148752.3299322,
+    "ast_hash": "92737955999f94dca3093d7966f9f089",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\requirements.txt": {
+    "mtime": 1780125625.550915,
+    "ast_hash": "038c05af46d1450359e0b0b72615d7b7",
+    "semantic_hash": ""
+  },
+  "C:\\HealthAI\\graphify\\architecture_graph.png": {
+    "mtime": 1780756409.756565,
+    "ast_hash": "8f1c4723200b8dbd19e313df499ab34b",
+    "semantic_hash": ""
+  }
+}

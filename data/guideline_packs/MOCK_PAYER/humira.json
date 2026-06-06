@@ -1,0 +1,22 @@
+{
+  "guideline_id": "GL-HUMIRA-001",
+  "service_name": "Humira (adalimumab)",
+  "diagnosis": "Moderate to severe rheumatoid arthritis",
+  "version": "MOCK-2026.1",
+  "source": "Mock Payer Simplified Policy (testing only)",
+  "aliases": ["humira", "adalimumab"],
+  "applicable_icd10": ["M05", "M06", "L40", "K50", "K51"],
+  "applicable_cpt": ["J0135"],
+  "required_criteria": [
+    {
+      "id": "DX_CONFIRMED",
+      "description": "Documented diagnosis supporting the requested therapy.",
+      "keywords": ["rheumatoid arthritis", "moderate to severe", "crohn", "psoriasis", "ulcerative colitis"],
+      "required": true
+    }
+  ],
+  "contraindications": [],
+  "supporting_evidence": [
+    "Mock Payer minimal policy: diagnosis confirmation only (testing)"
+  ]
+}

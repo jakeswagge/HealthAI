@@ -73,7 +73,7 @@ def init_state() -> None:
             st.session_state[key] = value
 
 
-def _clear_derived() -> None:
+def _clear_derived(*, clear_persisted_case: bool = True) -> None:
     """Clear all cached data derived from a document (text, case, review)."""
     st.session_state[KEY_TEXT] = None
     st.session_state[KEY_PAGE_COUNT] = 1
@@ -83,7 +83,8 @@ def _clear_derived() -> None:
     st.session_state[KEY_EXTRACTION_META] = None
     st.session_state[KEY_APPEAL] = None
     st.session_state[KEY_APPEAL_USED_AI] = False
-    st.session_state[KEY_PERSISTED_CASE_ID] = None
+    if clear_persisted_case:
+        st.session_state[KEY_PERSISTED_CASE_ID] = None
 
 
 def set_active_document(signature: str, filename: str) -> bool:
@@ -108,7 +109,7 @@ def clear_document() -> None:
     init_state()
     st.session_state[KEY_SIGNATURE] = None
     st.session_state[KEY_FILENAME] = None
-    _clear_derived()
+    _clear_derived(clear_persisted_case=False)
 
 
 # --------------------------------------------------------------------------- #

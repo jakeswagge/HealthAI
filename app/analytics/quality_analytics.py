@@ -18,8 +18,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from app.assembly.engine import CaseAssemblyEngine
+from app.audit.repository import AuditRepository
 from app.models.audit_event import AuditEventType
 from app.models.evidence_review_decision import EvidenceDecision
+from app.quality.decision_repository import EvidenceReviewDecisionRepository
+from app.quality.repository import EvidenceQualityRepository
 from app.storage.database import DEFAULT_DB_PATH, connect, initialize_schema
 
 
@@ -63,27 +67,39 @@ class QualityAnalytics:
 
 
 class QualityAnalyticsEngine:
-    """Compute :class:`QualityAnalytics` from local storage."""
+    """Compute :class:`QualityAnalytics` from local storage.
+
+    Depends on repositories via duck-typed injection rather than importing the
+    ``cases`` package, so there is no ``analytics -> cases`` import edge at
+    module load time (no package-level cycle). ``CaseService`` injects the
+    repositories it already owns. When constructed standalone (e.g. in tests)
+    the case/document repositories are resolved lazily inside ``__init__``.
+    """
 
     def __init__(
         self,
         conn: sqlite3.Connection | None = None,
         db_path: str | Path = DEFAULT_DB_PATH,
+        *,
+        case_repository=None,
+        document_repository=None,
     ) -> None:
         self._owns_conn = conn is None
         self.conn = conn or connect(db_path)
         initialize_schema(self.conn)
-        # Lazy imports avoid a circular dependency (cases package imports
-        # service, which imports analytics).
-        from app.audit.repository import AuditRepository
-        from app.cases.repository import CaseRepository
-        from app.cases.document_repository import CaseDocumentRepository
-        from app.assembly.engine import CaseAssemblyEngine
-        from app.quality.repository import EvidenceQualityRepository
-        from app.quality.decision_repository import EvidenceReviewDecisionRepository
+        # Case/document repositories are injected (by CaseService) or resolved
+        # lazily here — never imported at module top level — so analytics has
+        # no top-level dependency on the cases package.
+        if case_repository is None or document_repository is None:
+            from app.cases.document_repository import CaseDocumentRepository
+            from app.cases.repository import CaseRepository
 
-        self.cases = CaseRepository(conn=self.conn)
-        self.documents = CaseDocumentRepository(conn=self.conn)
+            case_repository = case_repository or CaseRepository(conn=self.conn)
+            document_repository = document_repository or CaseDocumentRepository(
+                conn=self.conn
+            )
+        self.cases = case_repository
+        self.documents = document_repository
         self.audit = AuditRepository(conn=self.conn)
         self.quality = EvidenceQualityRepository(conn=self.conn)
         self.decisions = EvidenceReviewDecisionRepository(conn=self.conn)

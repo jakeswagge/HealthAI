@@ -33,11 +33,18 @@ from app.models.conflict_resolution import AuthoritativeFact, ConflictResolution
 from app.models.evidence_quality import EvidenceQualityAssessment
 from app.models.evidence_reference import EvidenceReference
 from app.models.evidence_review_decision import EvidenceReviewDecision
+from app.models.explanation import (
+    AppealExplanation,
+    ReviewExplanation,
+    TraceabilityChain,
+)
 from app.models.governance import (
     ApprovedEvidenceSet,
     GovernanceComplianceReport,
 )
+from app.models.operational_health import OperationalHealthReport
 from app.models.ocr_result import OCRPageResult
+from app.models.payer import PayerProfile
 from app.models.reviewer_feedback import ReviewerFeedback
 
 
@@ -258,6 +265,12 @@ def build_export_files(
     quality_analytics: dict | None = None,
     approved_evidence_set: ApprovedEvidenceSet | None = None,
     all_evidence: list[EvidenceReference] | None = None,
+    review_explanation: ReviewExplanation | None = None,
+    appeal_explanation: AppealExplanation | None = None,
+    traceability_chain: TraceabilityChain | None = None,
+    payer_profile: PayerProfile | None = None,
+    operational_health: OperationalHealthReport | None = None,
+    validation_report: dict | None = None,
 ) -> dict[str, str]:
     """Return a mapping of filename -> text content for the export bundle.
 
@@ -376,6 +389,24 @@ def build_export_files(
             indent=2,
         )
 
+    # Milestone 13: explainability + traceability chain.
+    if review_explanation is not None:
+        files["review_explanation.json"] = review_explanation.model_dump_json(indent=2)
+    if appeal_explanation is not None:
+        files["appeal_explanation.json"] = appeal_explanation.model_dump_json(indent=2)
+    if traceability_chain is not None:
+        files["traceability_chain.json"] = traceability_chain.model_dump_json(indent=2)
+
+    # Final Milestone: payer profile, operational health, validation report.
+    if payer_profile is not None:
+        files["payer_profile.json"] = payer_profile.model_dump_json(indent=2)
+    if operational_health is not None:
+        files["operational_health.json"] = json.dumps(
+            operational_health.as_dict(), indent=2
+        )
+    if validation_report is not None:
+        files["validation_report.json"] = json.dumps(validation_report, indent=2)
+
     return files
 
 
@@ -394,6 +425,12 @@ def build_export_zip(
     quality_analytics: dict | None = None,
     approved_evidence_set: ApprovedEvidenceSet | None = None,
     all_evidence: list[EvidenceReference] | None = None,
+    review_explanation: ReviewExplanation | None = None,
+    appeal_explanation: AppealExplanation | None = None,
+    traceability_chain: TraceabilityChain | None = None,
+    payer_profile: PayerProfile | None = None,
+    operational_health: OperationalHealthReport | None = None,
+    validation_report: dict | None = None,
 ) -> bytes:
     """Build the export bundle as ZIP bytes."""
     files = build_export_files(
@@ -411,6 +448,12 @@ def build_export_zip(
         quality_analytics,
         approved_evidence_set,
         all_evidence,
+        review_explanation,
+        appeal_explanation,
+        traceability_chain,
+        payer_profile,
+        operational_health,
+        validation_report,
     )
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:

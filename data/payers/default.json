@@ -1,0 +1,8 @@
+{
+  "payer_id": "DEFAULT",
+  "payer_name": "HealthAI Default Policy",
+  "guideline_pack": "DEFAULT",
+  "version": "2026.1",
+  "effective_date": "2026-01-01",
+  "status": "ACTIVE"
+}

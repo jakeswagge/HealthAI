@@ -15,8 +15,6 @@ injected :class:`LLMClient`, keeping AI isolated behind the service layer.
 
 from __future__ import annotations
 
-import json
-import re
 from dataclasses import dataclass, field
 
 from pydantic import ValidationError as PydanticValidationError
@@ -24,10 +22,8 @@ from pydantic import ValidationError as PydanticValidationError
 from app.agents.prompts import EXTRACTION_SYSTEM_PROMPT, build_extraction_messages
 from app.models.patient_case import PatientCase
 from app.services.factory import get_llm_client
+from app.services.json_utils import extract_json_object as _extract_json_object
 from app.services.llm_client import LLMClient, LLMError
-
-# Matches a ```json ... ``` or ``` ... ``` fenced block.
-_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 
 
 class ExtractionError(Exception):
@@ -57,57 +53,9 @@ class ExtractionResult:
     errors: list[str] = field(default_factory=list)
 
 
-def _extract_json_object(text: str) -> dict:
-    """Best-effort extraction of a single JSON object from model output.
-
-    Handles: clean JSON, fenced JSON blocks, and JSON embedded in prose.
-
-    Raises:
-        ValueError: if no parseable JSON object is found.
-    """
-    if text is None:
-        raise ValueError("Model returned no text.")
-
-    candidate = text.strip()
-
-    # 1. Direct parse.
-    try:
-        obj = json.loads(candidate)
-        if isinstance(obj, dict):
-            return obj
-    except json.JSONDecodeError:
-        pass
-
-    # 2. Fenced code block.
-    fence = _FENCE_RE.search(candidate)
-    if fence:
-        try:
-            obj = json.loads(fence.group(1))
-            if isinstance(obj, dict):
-                return obj
-        except json.JSONDecodeError:
-            pass
-
-    # 3. First balanced { ... } span.
-    start = candidate.find("{")
-    if start != -1:
-        depth = 0
-        for i in range(start, len(candidate)):
-            ch = candidate[i]
-            if ch == "{":
-                depth += 1
-            elif ch == "}":
-                depth -= 1
-                if depth == 0:
-                    snippet = candidate[start : i + 1]
-                    try:
-                        obj = json.loads(snippet)
-                        if isinstance(obj, dict):
-                            return obj
-                    except json.JSONDecodeError:
-                        break
-
-    raise ValueError("No valid JSON object found in model output.")
+# ``_extract_json_object`` is re-exported from app.services.json_utils (shared
+# implementation, Milestone 12). The alias preserves the prior public name used
+# by tests; behavior is unchanged.
 
 
 class MedicalExtractionAgent:

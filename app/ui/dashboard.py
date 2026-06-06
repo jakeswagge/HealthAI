@@ -47,6 +47,7 @@ from app.models.review_result import Recommendation
 from app.review.review_agent import GuidelineReviewAgent
 from app.services.factory import describe_active_backend, get_llm_client
 from app.ui import case_ui, session
+from app.ui.tabs.common import get_case_service
 
 # Directory holding generated mock healthcare documents.
 SAMPLE_DOCS_DIR = Path(__file__).resolve().parents[2] / "data" / "sample_docs"
@@ -147,12 +148,52 @@ def _document_ready() -> bool:
     return bool(session.get_text() is not None)
 
 
+def _selected_case_record():
+    """Return the selected CaseService record, if any."""
+    case_id = session.get_persisted_case_id()
+    if not case_id:
+        return None
+    return get_case_service().get_case(case_id)
+
+
+def _selected_case_text() -> str:
+    """Join stored document text for the selected case."""
+    case_id = session.get_persisted_case_id()
+    if not case_id:
+        return ""
+    docs = get_case_service().list_documents(case_id)
+    return "\n\n".join(d.raw_text for d in docs if d.raw_text)
+
+
+def _selected_case_stem() -> str:
+    """Filename stem for downloads from upload or selected case."""
+    filename = st.session_state.get(session.KEY_FILENAME)
+    if filename:
+        return Path(filename).stem
+    case_id = session.get_persisted_case_id()
+    return case_id or "case"
+
+
+def _database_case_ready() -> bool:
+    record = _selected_case_record()
+    return bool(record and record.patient_case is not None)
+
+
+def _active_pipeline_ready() -> bool:
+    return _database_case_ready() or _document_ready()
+
+
 def _get_or_extract_case(force: bool = False):
     """Return the cached PatientCase, running the agent only if needed.
 
     The MedicalExtractionAgent (potential Claude call) runs only when there is
     no cached case or ``force`` is True (explicit reprocess).
     """
+    record = _selected_case_record()
+    if record and record.patient_case is not None and not force:
+        session.set_case(record.patient_case)
+        return record.patient_case
+
     cached = session.get_case()
     if cached is not None and not force:
         return cached
@@ -182,12 +223,17 @@ def _get_or_extract_case(force: bool = False):
 
 def _get_or_run_review(force: bool = False):
     """Return the cached review, running the review agent only if needed."""
+    record = _selected_case_record()
+    if record and record.review_result is not None and not force:
+        session.set_review(record.review_result, used_ai=False)
+        return record.review_result, False
+
     cached = session.get_review()
     if cached is not None and not force:
         return cached, session.get_review_used_ai()
 
-    case = session.get_case()
-    text = session.get_text()
+    case = _get_or_extract_case(force=False)
+    text = _selected_case_text() or session.get_text()
     if case is None:
         return None, False
 
@@ -196,6 +242,8 @@ def _get_or_run_review(force: bool = False):
         review = agent.review(case, text)
 
     session.set_review(review.result, review.used_ai)
+    if record and record.patient_case is not None:
+        get_case_service().attach_review(record.case_id, review.result)
     return review.result, review.used_ai
 
 
@@ -205,12 +253,17 @@ def _get_or_generate_appeal(force: bool = False):
     Depends on the cached case + review. The AppealGenerationAgent (potential
     Claude call) runs only when there is no cached appeal or ``force`` is True.
     """
+    record = _selected_case_record()
+    if record and record.appeal_letter is not None and not force:
+        session.set_appeal(record.appeal_letter, used_ai=False)
+        return record.appeal_letter, False
+
     cached = session.get_appeal()
     if cached is not None and not force:
         return cached, session.get_appeal_used_ai()
 
-    case = session.get_case()
-    review = session.get_review()
+    case = _get_or_extract_case(force=False)
+    review, _ = _get_or_run_review(force=False)
     if case is None or review is None:
         return None, False
 
@@ -219,6 +272,8 @@ def _get_or_generate_appeal(force: bool = False):
         result = agent.generate(case, review)
 
     session.set_appeal(result.appeal, result.used_ai)
+    if record and record.patient_case is not None:
+        get_case_service().attach_appeal(record.case_id, result.appeal)
     return result.appeal, result.used_ai
 
 
@@ -298,6 +353,8 @@ def _render_patient_summary(case) -> None:
         st.success("Decision: APPROVED")
     elif decision is Decision.PARTIAL:
         st.warning("Decision: PARTIAL")
+    elif decision is Decision.PENDING:
+        st.info("Decision: PENDING")
     else:
         st.info("Decision: UNKNOWN")
 
@@ -317,18 +374,19 @@ def _render_structured_tab() -> None:
             "Claude Opus — no other changes needed."
         )
 
-    if not _document_ready():
+    if not _active_pipeline_ready():
         st.info("Upload a denial or approval letter in the sidebar to extract structured data.")
         return
 
-    text = session.get_text()
-    if not text.strip():
+    text = _selected_case_text() or session.get_text()
+    if text is not None and not text.strip() and not _database_case_ready():
         st.warning("No text could be extracted; cannot run structured extraction.")
         return
 
-    _render_size_warnings(text, session.get_page_count())
+    if text:
+        _render_size_warnings(text, session.get_page_count())
 
-    cached_case = session.get_case()
+    cached_case = _get_or_extract_case(force=False) if _database_case_ready() else session.get_case()
     # Buttons: first run vs. explicit reprocess. Tab switches hit neither.
     col_run, col_reprocess = st.columns(2)
     run = col_run.button(
@@ -384,7 +442,7 @@ def _render_structured_tab() -> None:
     st.download_button(
         label="Download structured JSON",
         data=case.model_dump_json(indent=2),
-        file_name=f"{Path(st.session_state[session.KEY_FILENAME]).stem}_structured.json",
+        file_name=f"{_selected_case_stem()}_structured.json",
         mime="application/json",
         key="structured_download",
     )
@@ -417,18 +475,20 @@ def _render_clinical_review_tab() -> None:
         "identical either way."
     )
 
-    if not _document_ready():
+    if not _active_pipeline_ready():
         st.info("Upload a prior-authorization letter in the sidebar to run a clinical review.")
         return
 
-    text = session.get_text()
-    if not text.strip():
+    text = _selected_case_text() or session.get_text()
+    if text is not None and not text.strip() and not _database_case_ready():
         st.warning("No text could be extracted; cannot run a clinical review.")
         return
 
-    _render_size_warnings(text, session.get_page_count())
+    if text:
+        _render_size_warnings(text, session.get_page_count())
 
-    cached_review = session.get_review()
+    record = _selected_case_record()
+    cached_review = record.review_result if record and record.review_result is not None else session.get_review()
     col_run, col_reprocess = st.columns(2)
     run = col_run.button(
         "Run clinical review",
@@ -447,7 +507,7 @@ def _render_clinical_review_tab() -> None:
     if reprocess:
         session.invalidate_case_and_review()
 
-    if cached_review is None and not run:
+    if cached_review is None and not run and not _database_case_ready():
         with st.expander("Preview extracted text"):
             st.text(text[:2000])
         st.info("Click **Run clinical review** to analyze this document.")
@@ -515,7 +575,7 @@ def _render_clinical_review_tab() -> None:
     st.download_button(
         label="Download review JSON",
         data=result.model_dump_json(indent=2),
-        file_name=f"{Path(st.session_state[session.KEY_FILENAME]).stem}_review.json",
+        file_name=f"{_selected_case_stem()}_review.json",
         mime="application/json",
         key="review_download",
     )
@@ -538,18 +598,20 @@ def _render_appeal_tab() -> None:
         "the same safety rules: no fabricated clinical facts."
     )
 
-    if not _document_ready():
+    if not _active_pipeline_ready():
         st.info("Upload a denial letter in the sidebar to generate an appeal.")
         return
 
-    text = session.get_text()
-    if not text.strip():
+    text = _selected_case_text() or session.get_text()
+    if text is not None and not text.strip() and not _database_case_ready():
         st.warning("No text could be extracted; cannot generate an appeal.")
         return
 
-    _render_size_warnings(text, session.get_page_count())
+    if text:
+        _render_size_warnings(text, session.get_page_count())
 
-    cached_appeal = session.get_appeal()
+    record = _selected_case_record()
+    cached_appeal = record.appeal_letter if record and record.appeal_letter is not None else session.get_appeal()
     col_run, col_reprocess = st.columns(2)
     run = col_run.button(
         "Generate appeal",
@@ -569,7 +631,7 @@ def _render_appeal_tab() -> None:
     if reprocess:
         session.invalidate_appeal()
 
-    if cached_appeal is None and not run:
+    if cached_appeal is None and not run and not _database_case_ready():
         st.info("Click **Generate appeal** to draft a letter for this document.")
         return
 
@@ -625,7 +687,7 @@ def _render_appeal_tab() -> None:
     st.markdown("#### Generated letter")
     st.markdown(appeal.letter_text)
 
-    stem = Path(st.session_state[session.KEY_FILENAME]).stem
+    stem = _selected_case_stem()
     col_txt, col_md = st.columns(2)
     col_txt.download_button(
         label="Download as TXT",
@@ -707,6 +769,11 @@ def render_dashboard() -> None:
         metrics_tab,
         governance_tab,
         analytics_tab,
+        review_explain_tab,
+        appeal_explain_tab,
+        payer_tab,
+        ops_health_tab,
+        validation_tab,
     ) = st.tabs(
         [
             "Raw Text Extraction",
@@ -728,6 +795,11 @@ def render_dashboard() -> None:
             "Operational Metrics",
             "Governance Settings",
             "Quality Analytics",
+            "Review Explainability",
+            "Appeal Explainability",
+            "Payer Management",
+            "Operational Health",
+            "Validation Runner",
         ]
     )
     with raw_tab:
@@ -768,3 +840,13 @@ def render_dashboard() -> None:
         case_ui.render_governance_settings_tab()
     with analytics_tab:
         case_ui.render_quality_analytics_tab()
+    with review_explain_tab:
+        case_ui.render_review_explainability_tab()
+    with appeal_explain_tab:
+        case_ui.render_appeal_explainability_tab()
+    with payer_tab:
+        case_ui.render_payer_management_tab()
+    with ops_health_tab:
+        case_ui.render_operational_health_tab()
+    with validation_tab:
+        case_ui.render_validation_runner_tab()

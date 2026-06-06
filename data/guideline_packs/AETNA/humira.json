@@ -1,0 +1,53 @@
+{
+  "guideline_id": "GL-HUMIRA-001",
+  "service_name": "Humira (adalimumab)",
+  "diagnosis": "Moderate to severe rheumatoid arthritis",
+  "version": "AETNA-2026.1",
+  "source": "Aetna Simplified Specialty Policy (mock - not proprietary)",
+  "aliases": ["humira", "adalimumab"],
+  "applicable_icd10": ["M05", "M06", "L40", "K50", "K51"],
+  "applicable_cpt": ["J0135"],
+  "required_criteria": [
+    {
+      "id": "DX_CONFIRMED",
+      "description": "Documented diagnosis of moderate-to-severe rheumatoid arthritis (or other approved indication).",
+      "keywords": ["rheumatoid arthritis", "moderate to severe", "crohn", "psoriasis", "ulcerative colitis"],
+      "required": true
+    },
+    {
+      "id": "STEP_THERAPY_DUAL",
+      "description": "Trial and failure of at least TWO conventional DMARDs (e.g., methotrexate and sulfasalazine) (Aetna step therapy).",
+      "keywords": ["methotrexate", "sulfasalazine", "two dmard", "dmard", "step therapy", "failed"],
+      "required": true
+    },
+    {
+      "id": "TB_SCREEN",
+      "description": "Negative tuberculosis (TB) screening prior to initiating therapy.",
+      "keywords": ["tuberculosis", "tb test", "tb screen", "ppd", "quantiferon", "negative tb"],
+      "required": true
+    },
+    {
+      "id": "SPECIALIST",
+      "description": "Prescribed by or in consultation with a rheumatologist or appropriate specialist.",
+      "keywords": ["rheumatologist", "specialist", "gastroenterologist", "dermatologist"],
+      "required": true
+    },
+    {
+      "id": "DISEASE_ACTIVITY",
+      "description": "Documented objective disease-activity score (e.g., DAS28, CDAI) supporting moderate-to-severe activity.",
+      "keywords": ["das28", "cdai", "disease activity", "sdai"],
+      "required": true
+    }
+  ],
+  "contraindications": [
+    {
+      "id": "ACTIVE_INFECTION",
+      "description": "Active serious infection (including active tuberculosis).",
+      "keywords": ["active infection", "active tuberculosis", "sepsis"]
+    }
+  ],
+  "supporting_evidence": [
+    "Aetna Simplified Specialty Pharmacy Policy (mock summary)",
+    "Step therapy requires two conventional DMARD failures (mock)"
+  ]
+}

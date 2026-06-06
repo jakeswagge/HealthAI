@@ -1,0 +1,41 @@
+{
+  "guideline_id": "GL-HUMIRA-001",
+  "service_name": "Humira (adalimumab)",
+  "diagnosis": "Moderate to severe rheumatoid arthritis",
+  "version": "UHC-2026.1",
+  "source": "UnitedHealthcare Simplified Specialty Policy (mock - not proprietary)",
+  "aliases": ["humira", "adalimumab"],
+  "applicable_icd10": ["M05", "M06", "L40", "K50", "K51"],
+  "applicable_cpt": ["J0135"],
+  "required_criteria": [
+    {
+      "id": "DX_CONFIRMED",
+      "description": "Documented diagnosis of moderate-to-severe rheumatoid arthritis (or other approved indication).",
+      "keywords": ["rheumatoid arthritis", "moderate to severe", "crohn", "psoriasis", "ulcerative colitis"],
+      "required": true
+    },
+    {
+      "id": "STEP_THERAPY",
+      "description": "Trial and failure of at least one conventional DMARD (e.g., methotrexate) for 3 months (step therapy).",
+      "keywords": ["methotrexate", "dmard", "step therapy", "conventional therapy", "failed"],
+      "required": true
+    },
+    {
+      "id": "SPECIALIST",
+      "description": "Prescribed by or in consultation with a rheumatologist or appropriate specialist.",
+      "keywords": ["rheumatologist", "specialist", "gastroenterologist", "dermatologist"],
+      "required": true
+    }
+  ],
+  "contraindications": [
+    {
+      "id": "ACTIVE_INFECTION",
+      "description": "Active serious infection (including active tuberculosis).",
+      "keywords": ["active infection", "active tuberculosis", "sepsis"]
+    }
+  ],
+  "supporting_evidence": [
+    "UnitedHealthcare Simplified Specialty Pharmacy Policy (mock summary)",
+    "Single DMARD trial required; TB screening recommended but not mandatory (mock)"
+  ]
+}

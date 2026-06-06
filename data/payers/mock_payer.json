@@ -1,0 +1,8 @@
+{
+  "payer_id": "MOCK_PAYER",
+  "payer_name": "Mock Payer (testing)",
+  "guideline_pack": "MOCK_PAYER",
+  "version": "2026.1",
+  "effective_date": "2026-01-01",
+  "status": "ACTIVE"
+}

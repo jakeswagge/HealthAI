@@ -114,6 +114,19 @@ class TestDerived:
         assert "DENIED" in s
         assert "Not medically necessary" in s
 
+    def test_summary_for_pending_is_neutral(self):
+        case = PatientCase(
+            patient_name="Sarah Johnson",
+            member_id="UHC123456",
+            date_of_birth="1985-03-15",
+            decision="pending",
+        )
+
+        assert (
+            case.summary()
+            == "Sarah Johnson — request is pending review for an unspecified service."
+        )
+
 
 class TestSchemaCompliance:
     def test_rejects_out_of_schema_via_json(self):

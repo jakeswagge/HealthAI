@@ -50,6 +50,17 @@ class AppealLetter(BaseModel):
         default=None, description="The original determination (e.g. denied)."
     )
 
+    # --- Final Milestone: payer / guideline-pack provenance (optional) --- #
+    payer_id: Optional[str] = Field(
+        default=None, description="Payer whose policy governed this appeal."
+    )
+    guideline_pack: Optional[str] = Field(
+        default=None, description="Guideline pack id used for this appeal."
+    )
+    guideline_version: Optional[str] = Field(
+        default=None, description="Version of the guideline/pack used."
+    )
+
     appeal_reason: str = Field(
         default="",
         description="The central argument for why the denial should be overturned.",

@@ -19,8 +19,6 @@ is always usable locally and the JSON contract is identical either way.
 
 from __future__ import annotations
 
-import json
-import re
 from dataclasses import dataclass, field
 
 from pydantic import ValidationError as PydanticValidationError
@@ -34,9 +32,8 @@ from app.models.review_result import Recommendation, ReviewResult
 from app.review.engine import ClinicalReviewEngine
 from app.review.review_prompts import REVIEW_SYSTEM_PROMPT, build_review_messages
 from app.services.factory import get_llm_client
+from app.services.json_utils import extract_json_object as _extract_json_object
 from app.services.llm_client import LLMClient, LLMError
-
-_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 
 
 class ReviewAgentError(Exception):
@@ -58,47 +55,8 @@ class ReviewAgentResult:
     errors: list[str] = field(default_factory=list)
 
 
-def _extract_json_object(text: str) -> dict:
-    """Best-effort extraction of a single JSON object from model output."""
-    if text is None:
-        raise ValueError("Model returned no text.")
-    candidate = text.strip()
-
-    try:
-        obj = json.loads(candidate)
-        if isinstance(obj, dict):
-            return obj
-    except json.JSONDecodeError:
-        pass
-
-    fence = _FENCE_RE.search(candidate)
-    if fence:
-        try:
-            obj = json.loads(fence.group(1))
-            if isinstance(obj, dict):
-                return obj
-        except json.JSONDecodeError:
-            pass
-
-    start = candidate.find("{")
-    if start != -1:
-        depth = 0
-        for i in range(start, len(candidate)):
-            ch = candidate[i]
-            if ch == "{":
-                depth += 1
-            elif ch == "}":
-                depth -= 1
-                if depth == 0:
-                    snippet = candidate[start : i + 1]
-                    try:
-                        obj = json.loads(snippet)
-                        if isinstance(obj, dict):
-                            return obj
-                    except json.JSONDecodeError:
-                        break
-
-    raise ValueError("No valid JSON object found in model output.")
+# ``_extract_json_object`` is the shared helper from app.services.json_utils
+# (Milestone 12 de-duplication); behavior unchanged.
 
 
 class GuidelineReviewAgent:

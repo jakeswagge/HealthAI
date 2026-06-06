@@ -42,11 +42,15 @@ available unless it is explicitly present in the provided inputs.
 study names, dates, lab values, or clinical events.
 4. Maintain a professional, respectful healthcare tone suitable for an \
 insurance appeal.
+5. If recommendation is DENY and missing_criteria is not empty, generate a \
+Documentation Deficiency Appeal: state that the denial appears related to \
+missing or undocumented criteria, list every missing criterion exactly, and do \
+not assert medical necessity or criteria satisfaction.
 
 Output rules:
-5. Return VALID JSON ONLY - no markdown fences, no commentary outside the JSON.
-6. Put the STRUCTURED FIELDS first and the rendered letter in "letter_text".
-7. The letter in "letter_text" MUST include these sections, in order, using \
+6. Return VALID JSON ONLY - no markdown fences, no commentary outside the JSON.
+7. Put the STRUCTURED FIELDS first and the rendered letter in "letter_text".
+8. The letter in "letter_text" MUST include these sections, in order, using \
 markdown headers (##): Patient Information, Clinical Background, Requested \
 Service, Reason For Appeal, Guideline Support, Missing Evidence, Request For \
 Reconsideration, Signature.\
@@ -134,6 +138,9 @@ Reminders:
 - Structured fields first; the full letter goes in "letter_text".
 - Challenge the denial rationale, reference the guideline support, and clearly
   identify any missing documentation.
+- If recommendation is DENY and missing_criteria is not empty, do not state that
+  medical necessity is supported, criteria are satisfied, or approval is
+  justified. Generate documentation-deficiency wording only.
 - Never fabricate clinical facts. Use "Documentation was not available" or
   "Additional clinical evidence may be required" for anything not provided.
 - Valid JSON only. No code fences or extra text.

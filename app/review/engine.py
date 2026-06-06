@@ -26,6 +26,8 @@ This engine is fully offline and independent of the extraction engine.
 
 from __future__ import annotations
 
+import re
+
 from app.guidelines.repository import (
     GuidelineRepository,
     get_default_repository,
@@ -39,12 +41,100 @@ from app.models.review_result import (
 )
 
 
-def _contains_any(text: str, keywords: list[str]) -> str | None:
-    """Return the first keyword found in text, or None."""
+SPECIALIST_VOCABULARY = [
+    "rheumatology",
+    "evaluated by rheumatology",
+    "rheumatology clinic",
+    "rheumatology consultation",
+    "specialist consultation",
+    "specialist evaluation",
+    "evaluated by specialist",
+    "seen by specialist",
+    "under care of rheumatology",
+    "referred to rheumatology",
+    "board-certified rheumatologist",
+    "consulting rheumatologist",
+    "reviewed by rheumatology service",
+]
+
+TB_SCREEN_VOCABULARY = [
+    "quantiferon",
+    "quantiferon gold",
+    "quantiferon-tb",
+    "quantiferon-tb gold negative",
+    "t-spot",
+    "tb test negative",
+    "tuberculosis screening negative",
+    "tuberculosis test negative",
+    "latent tb screening",
+    "negative tb result",
+]
+
+STEP_THERAPY_VOCABULARY = [
+    "failed methotrexate",
+    "methotrexate trial",
+    "inadequate response to methotrexate",
+    "persistent symptoms despite methotrexate",
+    "dmard failure",
+    "conventional dmard failure",
+    "methotrexate ineffective",
+    "uncontrolled disease on methotrexate",
+    "refractory to methotrexate",
+]
+
+_NEGATION_BEFORE_RE = re.compile(
+    r"\b(no|not|without|absent|missing|lacks?|lack of|undocumented)\b"
+    r"(?:\W+\w+){0,5}\W*$",
+    re.IGNORECASE,
+)
+_NEGATION_AFTER_RE = re.compile(
+    r"^\W*(?:\w+\W+){0,4}"
+    r"\b(not documented|not performed|not available|was not performed|were not performed)\b",
+    re.IGNORECASE,
+)
+
+
+def _keyword_pattern(keyword: str) -> re.Pattern:
+    escaped = re.escape(keyword.strip())
+    escaped = escaped.replace(r"\ ", r"\s+")
+    escaped = escaped.replace(r"\-", r"[-\s]?")
+    return re.compile(rf"(?<!\w){escaped}(?!\w)", re.IGNORECASE)
+
+
+def _is_negated_context(text: str, start: int, end: int) -> bool:
+    before = text[max(0, start - 80):start]
+    after = text[end : min(len(text), end + 80)]
+    return bool(_NEGATION_BEFORE_RE.search(before) or _NEGATION_AFTER_RE.search(after))
+
+
+def _expanded_keywords(crit: GuidelineCriterion) -> list[str]:
+    keywords = list(crit.keywords)
+    marker = f"{crit.id} {crit.description}".lower()
+    if "specialist" in marker or "rheumatologist" in marker:
+        keywords.extend(SPECIALIST_VOCABULARY)
+    if "tb_screen" in marker or "tuberculosis" in marker:
+        keywords.extend(TB_SCREEN_VOCABULARY)
+    if "step_therapy" in marker or "dmard" in marker or "methotrexate" in marker:
+        keywords.extend(STEP_THERAPY_VOCABULARY)
+    unique = list(dict.fromkeys(k for k in keywords if k.strip()))
+    return sorted(unique, key=len, reverse=True)
+
+
+def _contains_any(
+    text: str,
+    keywords: list[str],
+    *,
+    ignore_negated: bool = False,
+) -> str | None:
+    """Return the first deterministic keyword/phrase found in text, or None."""
     for kw in keywords:
-        k = kw.strip().lower()
-        if k and k in text:
-            return kw
+        k = kw.strip()
+        if not k:
+            continue
+        for match in _keyword_pattern(k).finditer(text):
+            if ignore_negated and _is_negated_context(text, match.start(), match.end()):
+                continue
+            return re.sub(r"\s+", " ", match.group(0)).strip()
     return None
 
 
@@ -173,8 +263,9 @@ class ClinicalReviewEngine:
         crit: GuidelineCriterion, support: str, deficiency: str
     ) -> tuple[str, str | None]:
         """Return (status, note) where status in {met, unmet, unknown}."""
-        flagged = _contains_any(deficiency, crit.keywords)
-        supported = _contains_any(support, crit.keywords)
+        keywords = _expanded_keywords(crit)
+        flagged = _contains_any(deficiency, keywords)
+        supported = _contains_any(support, keywords, ignore_negated=True)
 
         if flagged:
             return "unmet", f"Denial references this criterion ('{flagged}')."

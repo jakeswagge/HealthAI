@@ -26,9 +26,34 @@ HUMIRA_DENIAL = PatientCase(
     physician_name="Dr. Susan A. Patel, MD",
 )
 
+HUMIRA_COMPLETE_DENIAL_CASE = PatientCase(
+    patient_name="Harold T. Greene",
+    member_id="WP-558210334",
+    diagnosis="Moderate to severe rheumatoid arthritis",
+    icd10_codes=["M06.9"],
+    requested_service="Humira (adalimumab)",
+    cpt_codes=["J0135"],
+    insurance_company="WellPoint National Insurance",
+    decision=Decision.DENIED,
+    denial_reason="Coverage denied pending appeal review.",
+    physician_name="Dr. Susan A. Patel, MD",
+)
+
+HUMIRA_COMPLETE_DOC = (
+    "Moderate to severe rheumatoid arthritis. Failed methotrexate (DMARD) "
+    "for 3 months. Negative TB screen. Rheumatologist prescribing."
+)
+
 
 def _review() -> ReviewResult:
     return ClinicalReviewEngine().review(HUMIRA_DENIAL)
+
+
+def _approve_review() -> ReviewResult:
+    return ClinicalReviewEngine().review(
+        HUMIRA_COMPLETE_DENIAL_CASE,
+        HUMIRA_COMPLETE_DOC,
+    )
 
 
 # A realistic appeal-shaped JSON payload for the mock Claude client.
@@ -75,7 +100,7 @@ class TestOfflineFallback:
 class TestAIPath:
     def test_valid_first_try(self):
         agent = AppealGenerationAgent(llm_client=_appeal_mock(MockScenario.VALID))
-        out = agent.generate(HUMIRA_DENIAL, _review())
+        out = agent.generate(HUMIRA_COMPLETE_DENIAL_CASE, _approve_review())
         assert out.used_ai is True
         assert out.attempts == 1
         assert isinstance(out.appeal, AppealLetter)
@@ -86,7 +111,7 @@ class TestAIPath:
 
     def test_markdown_wrapped_is_parsed(self):
         agent = AppealGenerationAgent(llm_client=_appeal_mock(MockScenario.MARKDOWN_JSON))
-        out = agent.generate(HUMIRA_DENIAL, _review())
+        out = agent.generate(HUMIRA_COMPLETE_DENIAL_CASE, _approve_review())
         assert out.attempts == 1
         assert out.appeal.has_letter
 
@@ -94,7 +119,7 @@ class TestAIPath:
         agent = AppealGenerationAgent(
             llm_client=_appeal_mock(MockScenario.VALID, base=APPEAL_PAYLOAD_NO_LETTER)
         )
-        out = agent.generate(HUMIRA_DENIAL, _review())
+        out = agent.generate(HUMIRA_COMPLETE_DENIAL_CASE, _approve_review())
         # The agent fills in a complete letter from structured fields.
         assert out.appeal.has_letter
         assert "## Patient Information" in out.appeal.letter_text
@@ -102,7 +127,7 @@ class TestAIPath:
 
     def test_hallucinated_keys_ignored(self):
         agent = AppealGenerationAgent(llm_client=_appeal_mock(MockScenario.HALLUCINATED))
-        out = agent.generate(HUMIRA_DENIAL, _review())
+        out = agent.generate(HUMIRA_COMPLETE_DENIAL_CASE, _approve_review())
         dumped = out.appeal.model_dump()
         assert "blood_type" not in dumped
         assert "lucky_number" not in dumped
@@ -112,7 +137,7 @@ class TestRetryLogic:
     def test_invalid_then_valid(self):
         client = _appeal_mock([MockScenario.INVALID_JSON, MockScenario.VALID])
         agent = AppealGenerationAgent(llm_client=client, max_retries=3)
-        out = agent.generate(HUMIRA_DENIAL, _review())
+        out = agent.generate(HUMIRA_COMPLETE_DENIAL_CASE, _approve_review())
         assert out.attempts == 2
         assert out.repaired is True
         assert out.used_ai is True
@@ -120,13 +145,13 @@ class TestRetryLogic:
     def test_truncated_then_valid(self):
         client = _appeal_mock([MockScenario.TRUNCATED, MockScenario.VALID])
         agent = AppealGenerationAgent(llm_client=client, max_retries=3)
-        out = agent.generate(HUMIRA_DENIAL, _review())
+        out = agent.generate(HUMIRA_COMPLETE_DENIAL_CASE, _approve_review())
         assert out.attempts == 2
 
     def test_retry_prompt_appended(self):
         client = _appeal_mock([MockScenario.INVALID_JSON, MockScenario.VALID])
         agent = AppealGenerationAgent(llm_client=client, max_retries=3)
-        agent.generate(HUMIRA_DENIAL, _review())
+        agent.generate(HUMIRA_COMPLETE_DENIAL_CASE, _approve_review())
         assert len(client.received_messages[1]) > len(client.received_messages[0])
         assert "valid json" in client.received_messages[1][-1]["content"].lower()
 
@@ -135,7 +160,7 @@ class TestRetryLogic:
             [MockScenario.INVALID_JSON, MockScenario.PROSE, MockScenario.TRUNCATED]
         )
         agent = AppealGenerationAgent(llm_client=client, max_retries=3)
-        out = agent.generate(HUMIRA_DENIAL, _review())
+        out = agent.generate(HUMIRA_COMPLETE_DENIAL_CASE, _approve_review())
         # Degrades to deterministic builder rather than raising.
         assert out.used_ai is False
         assert isinstance(out.appeal, AppealLetter)
@@ -145,7 +170,7 @@ class TestRetryLogic:
 class TestSchemaCompliance:
     def test_output_is_valid_appeal_letter(self):
         agent = AppealGenerationAgent(llm_client=_appeal_mock(MockScenario.VALID))
-        out = agent.generate(HUMIRA_DENIAL, _review())
+        out = agent.generate(HUMIRA_COMPLETE_DENIAL_CASE, _approve_review())
         # Round-trips through pydantic without error.
         restored = AppealLetter.model_validate(out.appeal.model_dump())
         assert restored.appeal_id == out.appeal.appeal_id

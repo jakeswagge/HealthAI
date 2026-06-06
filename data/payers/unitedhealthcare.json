@@ -1,0 +1,8 @@
+{
+  "payer_id": "UNITEDHEALTHCARE",
+  "payer_name": "UnitedHealthcare (mock policy)",
+  "guideline_pack": "UNITEDHEALTHCARE",
+  "version": "2026.1",
+  "effective_date": "2026-01-01",
+  "status": "ACTIVE"
+}

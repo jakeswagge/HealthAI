@@ -63,10 +63,14 @@ def link_review(review: ReviewResult, context: UnifiedCaseContext) -> ReviewResu
     """
     evidence = context.evidence
     refs: dict[str, list[str]] = {}
+    detail_by_description = {d.description: d for d in review.criteria_detail}
 
     matched_ids: list[str] = []
     for crit in review.matched_criteria:
         matched_ids.extend(_best_matches(crit, evidence))
+        detail = detail_by_description.get(crit)
+        if detail and detail.note:
+            matched_ids.extend(_best_matches(detail.note, evidence, threshold=1))
     if matched_ids:
         refs["matched_criteria"] = _dedupe(matched_ids)
 

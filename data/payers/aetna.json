@@ -1,0 +1,8 @@
+{
+  "payer_id": "AETNA",
+  "payer_name": "Aetna (mock policy)",
+  "guideline_pack": "AETNA",
+  "version": "2026.1",
+  "effective_date": "2026-01-01",
+  "status": "ACTIVE"
+}

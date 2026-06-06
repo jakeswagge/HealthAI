@@ -1,0 +1,42 @@
+@startuml governance_flow
+title HealthAI - Governance Flow (validated evidence mode)
+
+start
+:Load GovernanceSettings (global row);
+if (validated_evidence_mode?) then (DRAFT)
+  :include ALL evidence;
+else (VALIDATED)
+  partition "ValidatedEvidenceEngine.build_set (per reference)" {
+    if (REJECTED by reviewer?) then (yes)
+      :exclude\n"rejected by reviewer";
+      note right: reviewer authority\nwins (rule #1)
+    else (no)
+      if (quality < minimum_quality_score?) then (yes)
+        :exclude\n"below minimum quality";
+      else (no)
+        if (not approved AND\nallow_unreviewed=false?) then (yes)
+          :exclude\n"not approved by reviewer";
+        else (no)
+          :include;
+        endif
+      endif
+    endif
+  }
+endif
+:ApprovedEvidenceSet\n(included_ids + excluded[reason]);
+:AuditEvent VALIDATED_EVIDENCE_APPLIED;
+:evidence for review / appeal / export;
+
+partition "Compliance (GovernanceComplianceChecker)" {
+  :APPEAL_WITH_WEAK_EVIDENCE (HIGH)?;
+  :UNRESOLVED_CONFLICTS (HIGH)?;
+  :EXPORT_WITHOUT_HUMAN_REVIEW (HIGH)?;
+  :LOW_QUALITY_EVIDENCE_PRESENT (MEDIUM)?;
+  :GovernanceComplianceReport;
+  :AuditEvent COMPLIANCE_CHECK_RUN;
+}
+
+:Export governance_report.json,\nquality_analytics.json,\napproved_evidence.json,\nexcluded_evidence.json;
+stop
+
+@enduml

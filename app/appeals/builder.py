@@ -30,6 +30,8 @@ from app.models.review_result import Recommendation, ReviewResult
 # Canonical safety phrases (asserted by tests).
 NOT_AVAILABLE = "Documentation was not available"
 MAY_BE_REQUIRED = "Additional clinical evidence may be required"
+INCOMPLETE_CASE_PACKAGE = "Incomplete Case Package"
+DOCUMENTATION_DEFICIENCY_APPEAL = "Documentation Deficiency Appeal"
 
 # Required letter section headers, in order.
 SECTION_HEADERS = [
@@ -90,6 +92,15 @@ def _build_appeal_reason(
     svc = _val(case.requested_service, "the requested service")
     original = case.denial_reason
 
+    if _is_documentation_deficiency(review):
+        missing = "; ".join(review.missing_criteria)
+        return (
+            "The denial appears related to missing or undocumented criteria. "
+            "The current record does not establish the following requirements: "
+            f"{missing}. Additional documentation required: Additional clinical "
+            "documentation is required before reconsideration can be expected."
+        )
+
     lines: list[str] = []
     if original:
         lines.append(
@@ -136,6 +147,15 @@ def _guideline_support(
             f"({guideline.source}, v{guideline.version})."
         )
         support.extend(guideline.supporting_evidence)
+    if _is_documentation_deficiency(review):
+        if review.matched_criteria:
+            for c in review.matched_criteria:
+                support.append(f"Record documents: {c}")
+        support.append(
+            "This letter identifies documentation deficiencies and does not ask "
+            "the payer to infer facts absent from the record."
+        )
+        return support
     # Criteria the record supports are the strongest appeal points.
     for c in review.matched_criteria:
         support.append(f"Criterion supported by the record: {c}")
@@ -160,12 +180,92 @@ def _missing_information(review: ReviewResult) -> list[str]:
 
 def _next_steps(review: ReviewResult) -> list[str]:
     steps = list(review.recommended_actions)
+    if _is_documentation_deficiency(review):
+        steps = [
+            step
+            for step in steps
+            if "if criteria are met" not in step.lower()
+        ]
     if not steps:
         steps = [
             "Submit any additional supporting clinical documentation.",
-            f"{MAY_BE_REQUIRED} to complete the medical-necessity review.",
+            f"{MAY_BE_REQUIRED} to complete the clinical review.",
         ]
     return steps
+
+
+def _is_active_denial(case: PatientCase) -> bool:
+    return case.decision is Decision.DENIED
+
+
+def _is_documentation_deficiency(review: ReviewResult) -> bool:
+    return (
+        review.recommendation is Recommendation.DENY
+        and len(review.missing_criteria) > 0
+    )
+
+
+def _incomplete_case_package(
+    *,
+    appeal_id: str,
+    created_at: str,
+    case: PatientCase,
+    review: ReviewResult,
+) -> AppealLetter:
+    """Return a missing-data package, not a medical-necessity appeal."""
+    missing = _missing_information(review)
+    if not case.patient_name:
+        missing.append(f"Patient name - {NOT_AVAILABLE}.")
+    if not case.diagnosis:
+        missing.append(f"Diagnosis - {NOT_AVAILABLE}.")
+    if not case.requested_service:
+        missing.append(f"Requested service - {NOT_AVAILABLE}.")
+    if not missing:
+        missing.append("Additional clinical documentation is required.")
+
+    steps = _next_steps(review)
+    if "Complete the case package before appeal drafting." not in steps:
+        steps.insert(0, "Complete the case package before appeal drafting.")
+
+    lines = [
+        "# Incomplete Case Package",
+        "",
+        f"Appeal Reference: {appeal_id}",
+        "",
+        "HealthAI cannot generate a complete appeal from the current case package.",
+        "",
+        "## Blocking Reason",
+        "Clinical review returned INSUFFICIENT_INFORMATION or the requested "
+        "service was missing. The letter generator will not assert clinical "
+        "conclusions until the missing facts are supplied and reviewed.",
+        "",
+        "## Missing Evidence",
+    ]
+    for item in missing:
+        lines.append(f"- {item}")
+    lines.extend(["", "## Recommended Next Steps"])
+    for step in steps:
+        lines.append(f"- {step}")
+
+    return AppealLetter(
+        appeal_id=appeal_id,
+        created_at=created_at,
+        patient_name=case.patient_name,
+        member_id=case.member_id,
+        insurance_company=case.insurance_company,
+        requested_service=case.requested_service,
+        original_decision=case.decision.value,
+        appeal_reason=INCOMPLETE_CASE_PACKAGE,
+        clinical_summary=(
+            "The case package is incomplete; no additional clinical facts are "
+            "asserted."
+        ),
+        guideline_support=[],
+        missing_information=missing,
+        recommended_next_steps=steps,
+        letter_text="\n".join(lines),
+        confidence_score=0.1,
+    )
 
 
 def render_letter_text(
@@ -189,9 +289,13 @@ def render_letter_text(
 
     svc = _val(case.requested_service, "the requested service")
     payer = _val(case.insurance_company, "the payer")
+    is_deficiency = _is_documentation_deficiency(review)
 
     lines: list[str] = []
-    lines.append("# Prior Authorization Appeal Letter")
+    if is_deficiency:
+        lines.append("# Documentation Deficiency Appeal")
+    else:
+        lines.append("# Prior Authorization Appeal Letter")
     lines.append("")
     lines.append(f"Date: {date_str}")
     lines.append(f"Appeal Reference: {appeal_id}")
@@ -238,10 +342,15 @@ def render_letter_text(
     # 6. Missing Evidence (always present; states none if empty)
     lines.append("## Missing Evidence")
     if missing_information:
-        lines.append(
-            "The following items were not available in the record. We do not "
-            "assert these facts; we identify them so they can be supplied:"
-        )
+        if is_deficiency:
+            lines.append(
+                "The current record does not establish the following requirements:"
+            )
+        else:
+            lines.append(
+                "The following items were not available in the record. We do not "
+                "assert these facts; we identify them so they can be supplied:"
+            )
         for item in missing_information:
             lines.append(f"- {item}")
     else:
@@ -253,13 +362,21 @@ def render_letter_text(
 
     # 7. Request For Reconsideration
     lines.append("## Request For Reconsideration")
-    lines.append(
-        f"On behalf of the member, we respectfully request that {payer} "
-        f"reconsider the determination for {svc}. We believe the information "
-        "above supports medical necessity. Where documentation was not "
-        f"available, {MAY_BE_REQUIRED.lower()}, and we are prepared to supply "
-        "it promptly upon request."
-    )
+    if is_deficiency:
+        lines.append(
+            f"On behalf of the member, we respectfully request that {payer} "
+            f"reconsider the determination for {svc} after the documentation "
+            "gaps above are addressed. Additional clinical documentation is "
+            "required before reconsideration can be expected."
+        )
+    else:
+        lines.append(
+            f"On behalf of the member, we respectfully request that {payer} "
+            f"reconsider the determination for {svc}. We believe the information "
+            "above supports medical necessity. Where documentation was not "
+            f"available, {MAY_BE_REQUIRED.lower()}, and we are prepared to supply "
+            "it promptly upon request."
+        )
     if recommended_next_steps:
         lines.append("")
         lines.append("Recommended next steps:")
@@ -296,8 +413,24 @@ class AppealLetterBuilder:
         guideline: ClinicalGuideline | None = None,
     ) -> AppealLetter:
         """Build a complete appeal letter from the structured inputs."""
+        if not _is_active_denial(case):
+            raise ValueError(
+                "Appeal blocked: No active insurance denial found for this case file."
+            )
+
         appeal_id = new_appeal_id()
         created_at = datetime.now(timezone.utc).isoformat()
+
+        if (
+            review.recommendation is Recommendation.INSUFFICIENT_INFORMATION
+            or not case.requested_service
+        ):
+            return _incomplete_case_package(
+                appeal_id=appeal_id,
+                created_at=created_at,
+                case=case,
+                review=review,
+            )
 
         clinical_summary = _build_clinical_summary(case)
         appeal_reason = _build_appeal_reason(case, review)

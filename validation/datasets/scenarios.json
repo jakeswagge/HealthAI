@@ -1,0 +1,57 @@
+{
+  "description": "Mock payer validation scenarios (synthetic; no PHI; no proprietary content). Reviews run on governance-approved structured evidence; expectations reflect deterministic offline behavior.",
+  "scenarios": [
+    {
+      "scenario_id": "DENIAL-RA-STEP-THERAPY",
+      "title": "RA Humira denial - step therapy not met (all packs deny)",
+      "kind": "denial",
+      "documents": [
+        {
+          "filename": "denial.txt",
+          "text": "Member Name: Harold Greene\nMember ID: WP-558210334\nDiagnosis: Rheumatoid arthritis\nProcedure: Humira (adalimumab)\nICD-10: M06.9\nStatus: DENIED\nReason for Denial: Step therapy not met; no DMARD trial documented."
+        }
+      ],
+      "payers": ["DEFAULT", "AETNA", "UNITEDHEALTHCARE"],
+      "expectations": {
+        "DEFAULT": {"recommendation": "DENY"},
+        "AETNA": {"recommendation": "DENY"},
+        "UNITEDHEALTHCARE": {"recommendation": "DENY"}
+      }
+    },
+    {
+      "scenario_id": "APPROVAL-RA-DIAGNOSIS",
+      "title": "RA Humira approval request - pack strictness diverges",
+      "kind": "approval",
+      "documents": [
+        {
+          "filename": "prior_auth.txt",
+          "text": "Member Name: Dana Whitfield\nMember ID: WP-100200300\nDiagnosis: Moderate to severe rheumatoid arthritis\nProcedure: Humira (adalimumab)\nICD-10: M06.9\nStatus: APPROVED"
+        }
+      ],
+      "payers": ["DEFAULT", "AETNA", "UNITEDHEALTHCARE", "MOCK_PAYER"],
+      "expectations": {
+        "DEFAULT": {"recommendation": "INSUFFICIENT_INFORMATION"},
+        "AETNA": {"recommendation": "INSUFFICIENT_INFORMATION"},
+        "UNITEDHEALTHCARE": {"recommendation": "INSUFFICIENT_INFORMATION"},
+        "MOCK_PAYER": {"recommendation": "APPROVE"}
+      }
+    },
+    {
+      "scenario_id": "PAYER-PACK-AWARE-COMPARISON",
+      "title": "Same case across DEFAULT/AETNA/UHC produces pack-aware results",
+      "kind": "denial",
+      "documents": [
+        {
+          "filename": "denial.txt",
+          "text": "Member Name: Leo Marsh\nMember ID: WP-777888999\nDiagnosis: Rheumatoid arthritis\nProcedure: Humira (adalimumab)\nICD-10: M06.9\nStatus: DENIED\nReason for Denial: Step therapy not met."
+        }
+      ],
+      "payers": ["DEFAULT", "AETNA", "UNITEDHEALTHCARE"],
+      "expectations": {
+        "DEFAULT": {"recommendation_in": ["DENY", "INSUFFICIENT_INFORMATION"]},
+        "AETNA": {"recommendation_in": ["DENY", "INSUFFICIENT_INFORMATION"]},
+        "UNITEDHEALTHCARE": {"recommendation_in": ["DENY", "INSUFFICIENT_INFORMATION"]}
+      }
+    }
+  ]
+}

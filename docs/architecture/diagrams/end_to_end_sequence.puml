@@ -1,0 +1,75 @@
+@startuml end_to_end_sequence
+title HealthAI - End-to-End Case (scanned multi-document)
+
+actor Reviewer
+participant "UI\n(dashboard/case_ui)" as UI
+participant "CaseService" as CS
+participant "Ingestion\n+ OCR" as ING
+participant "Assembly\n+ Evidence" as ASM
+participant "Quality" as Q
+participant "Governance" as GOV
+participant "Review\nAgent/Engine" as REV
+participant "Appeal\nAgent/Builder" as APP
+participant "Audit" as AUD
+database "SQLite" as DB
+
+Reviewer -> UI : upload documents
+UI -> CS : create_case()
+CS -> AUD : CASE_CREATED, DOCUMENT_UPLOADED
+CS -> DB : insert case
+
+loop each document
+  UI -> CS : ingest_document(bytes)
+  CS -> ING : detect type -> OCR if needed
+  ING --> CS : pages + OCRPageResult[]
+  CS -> DB : case_documents, ocr_results
+  CS -> AUD : CASE_DOCUMENT_ADDED
+end
+
+UI -> CS : assemble_case()
+CS -> ASM : extract + merge evidence, detect conflicts
+ASM --> CS : UnifiedCaseContext (PatientCase, conflicts, missing)
+CS -> DB : evidence_references (replace), authoritative_facts (SYSTEM seed)
+CS -> AUD : EXTRACTION_COMPLETED
+
+UI -> CS : score_evidence()
+CS -> Q : assess_all(evidence)
+Q --> CS : EvidenceQualityAssessment[]
+CS -> DB : evidence_quality
+CS -> AUD : EVIDENCE_QUALITY_SCORED
+
+Reviewer -> UI : approve/reject/flag evidence
+UI -> CS : record_evidence_decision()
+CS -> DB : evidence_review_decisions
+CS -> AUD : EVIDENCE_REVIEW_DECISION
+
+UI -> CS : evidence_for_consumption()
+CS -> GOV : build_set(settings, approved, rejected, quality)
+GOV --> CS : ApprovedEvidenceSet (validated: rejected excluded)
+CS -> AUD : VALIDATED_EVIDENCE_APPLIED
+
+UI -> CS : attach_review()
+CS -> REV : review(PatientCase)
+REV --> CS : ReviewResult
+CS -> DB : cases.review_result_json
+CS -> AUD : REVIEW_COMPLETED
+
+UI -> CS : attach_appeal()
+CS -> APP : generate(case, review)
+APP --> CS : AppealLetter
+CS -> DB : cases.appeal_letter_json
+CS -> AUD : APPEAL_GENERATED + STATUS_CHANGED (PENDING_HUMAN_REVIEW)
+
+Reviewer -> UI : human review decision
+UI -> CS : record_human_review(APPROVE)
+CS -> AUD : HUMAN_REVIEW_COMPLETED + STATUS_CHANGED (APPROVED_FOR_EXPORT)
+
+UI -> CS : check_compliance()
+CS -> GOV : check(...)
+GOV --> CS : GovernanceComplianceReport
+CS -> AUD : COMPLIANCE_CHECK_RUN
+
+UI -> CS : export bundle (ZIP)
+CS -> AUD : CASE_EXPORTED
+
+@enduml

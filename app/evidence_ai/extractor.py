@@ -19,15 +19,15 @@ present in the document, guaranteeing every fact is genuinely source-backed.
 from __future__ import annotations
 
 import json
+import json
 import re
 
 from app.evidence.extractor import EvidenceExtractor
 from app.models.case_document import CaseDocument
 from app.models.evidence_reference import EvidenceReference
 from app.services.factory import get_llm_client
+from app.services.json_utils import extract_json_payload
 from app.services.llm_client import LLMClient, LLMError
-
-_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 
 
 EVIDENCE_EXTRACTION_SYSTEM_PROMPT = """\
@@ -165,36 +165,15 @@ class ClaudeEvidenceExtractor:
 
     @staticmethod
     def _parse(text: str) -> list[dict]:
-        if text is None or not text.strip():
-            raise ValueError("Empty model response.")
-        candidate = text.strip()
-
-        def _try(s: str):
-            obj = json.loads(s)
-            if isinstance(obj, dict) and isinstance(obj.get("evidence"), list):
-                return obj["evidence"]
-            if isinstance(obj, list):
-                return obj
-            raise ValueError("JSON did not contain an 'evidence' array.")
-
-        try:
-            return _try(candidate)
-        except json.JSONDecodeError:
-            pass
-        fence = _FENCE_RE.search(candidate)
-        if fence:
-            return _try(fence.group(1))
-        start = candidate.find("{")
-        if start != -1:
-            depth = 0
-            for i in range(start, len(candidate)):
-                if candidate[i] == "{":
-                    depth += 1
-                elif candidate[i] == "}":
-                    depth -= 1
-                    if depth == 0:
-                        return _try(candidate[start : i + 1])
-        raise ValueError("No parseable evidence JSON found.")
+        # Uses the shared JSON payload extractor (Milestone 12 de-duplication).
+        # Behavior preserved: accept an object with an 'evidence' array, or a
+        # top-level array; raise ValueError otherwise.
+        payload = extract_json_payload(text)
+        if isinstance(payload, dict) and isinstance(payload.get("evidence"), list):
+            return payload["evidence"]
+        if isinstance(payload, list):
+            return payload
+        raise ValueError("JSON did not contain an 'evidence' array.")
 
     def _to_references(
         self,

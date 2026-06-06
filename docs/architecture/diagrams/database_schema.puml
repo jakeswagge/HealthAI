@@ -1,0 +1,170 @@
+@startuml database_schema
+title HealthAI - SQLite Schema (data/healthai.db)
+
+skinparam linetype ortho
+hide circle
+
+entity cases {
+  * case_id : TEXT <<PK>>
+  --
+  created_at : TEXT
+  updated_at : TEXT
+  status : TEXT
+  source_filename : TEXT
+  assigned_reviewer : TEXT
+  review_notes : TEXT
+  processing_seconds : REAL
+  patient_case_json : TEXT
+  review_result_json : TEXT
+  appeal_letter_json : TEXT
+  review_decisions_json : TEXT
+}
+
+entity audit_events {
+  * event_id : TEXT <<PK>>
+  --
+  timestamp : TEXT
+  case_id : TEXT
+  event_type : TEXT
+  actor : TEXT
+  details : TEXT
+}
+
+entity case_documents {
+  * document_id : TEXT <<PK>>
+  --
+  case_id : TEXT
+  filename : TEXT
+  document_type : TEXT
+  uploaded_at : TEXT
+  page_count : INTEGER
+  raw_text : TEXT
+}
+
+entity evidence_references {
+  * evidence_id : TEXT <<PK>>
+  --
+  case_id : TEXT
+  source_document_id : TEXT
+  source_filename : TEXT
+  page_number : INTEGER
+  section_label : TEXT
+  quoted_text : TEXT
+  normalized_fact : TEXT
+  fact_type : TEXT
+  confidence_score : REAL
+  created_at : TEXT
+}
+
+entity ocr_results {
+  * ocr_id : TEXT <<PK>>
+  --
+  case_id : TEXT
+  document_id : TEXT
+  page_number : INTEGER
+  raw_text : TEXT
+  confidence : REAL
+  processing_method : TEXT
+  timestamp : TEXT
+}
+
+entity conflict_resolutions {
+  * resolution_id : TEXT <<PK>>
+  --
+  case_id : TEXT
+  conflict_id : TEXT
+  fact_type : TEXT
+  chosen_value : TEXT
+  rejected_values_json : TEXT
+  reviewer_name : TEXT
+  justification : TEXT
+  timestamp : TEXT
+}
+
+entity authoritative_facts {
+  * fact_id : TEXT <<PK>>
+  --
+  case_id : TEXT
+  fact_type : TEXT
+  value : TEXT
+  source_document : TEXT
+  source_page : INTEGER
+  resolution_source : TEXT
+  confidence : REAL
+  resolution_id : TEXT
+  updated_at : TEXT
+  <<UNIQUE(case_id, fact_type)>>
+}
+
+entity reviewer_feedback {
+  * feedback_id : TEXT <<PK>>
+  --
+  case_id : TEXT
+  reviewer : TEXT
+  target_type : TEXT
+  target_id : TEXT
+  feedback : TEXT
+  comments : TEXT
+  timestamp : TEXT
+}
+
+entity evidence_quality {
+  * assessment_id : TEXT <<PK>>
+  --
+  evidence_id : TEXT
+  case_id : TEXT
+  completeness_score : REAL
+  relevance_score : REAL
+  consistency_score : REAL
+  traceability_score : REAL
+  overall_score : REAL
+  issues_json : TEXT
+  timestamp : TEXT
+}
+
+entity evidence_review_decisions {
+  * decision_id : TEXT <<PK>>
+  --
+  evidence_id : TEXT
+  case_id : TEXT
+  reviewer : TEXT
+  decision : TEXT
+  comments : TEXT
+  timestamp : TEXT
+}
+
+entity governance_settings {
+  * settings_id : TEXT <<PK>>  (always "GLOBAL")
+  --
+  validated_evidence_mode : INTEGER
+  allow_unreviewed_evidence : INTEGER
+  minimum_quality_score : REAL
+  require_conflict_resolution : INTEGER
+  require_human_review_before_export : INTEGER
+  updated_at : TEXT
+}
+
+' Relationships are by convention (no SQL FKs).
+cases ||..o{ audit_events
+cases ||..o{ case_documents
+cases ||..o{ evidence_references
+case_documents ||..o{ evidence_references
+case_documents ||..o{ ocr_results
+cases ||..o{ ocr_results
+cases ||..o{ conflict_resolutions
+cases ||..o{ authoritative_facts
+conflict_resolutions ||..o| authoritative_facts
+cases ||..o{ reviewer_feedback
+evidence_references ||..o{ evidence_quality
+evidence_references ||..o{ evidence_review_decisions
+
+note bottom of governance_settings
+  Single global row; not per-case.
+end note
+
+note top of cases
+  Relationships shown are logical (by case_id /
+  document_id / evidence_id). No SQL-level FKs.
+end note
+
+@enduml

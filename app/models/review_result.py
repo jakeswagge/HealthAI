@@ -63,6 +63,17 @@ class ReviewResult(BaseModel):
     service_name: Optional[str] = Field(
         default=None, description="Service/drug reviewed, if identified."
     )
+
+    # --- Final Milestone: payer / guideline-pack provenance (optional) --- #
+    payer_id: Optional[str] = Field(
+        default=None, description="Payer whose policy governed this review."
+    )
+    guideline_pack: Optional[str] = Field(
+        default=None, description="Guideline pack id used for this review."
+    )
+    guideline_version: Optional[str] = Field(
+        default=None, description="Version of the guideline/pack used."
+    )
     missing_evidence: list[str] = Field(
         default_factory=list,
         description="Specific evidence needed to complete the review.",
