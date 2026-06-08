@@ -5,6 +5,8 @@ from __future__ import annotations
 from app.assembly.engine import CaseAssemblyEngine
 from app.models.case_document import CaseDocument, DocumentCategory
 from app.models.conflict_report import ConflictSeverity
+from app.models.review_result import Recommendation
+from app.review.engine import ClinicalReviewEngine
 
 
 def _doc(filename, dt, text) -> CaseDocument:
@@ -101,6 +103,256 @@ class TestConflictDetection:
         assert ctx.conflict_report.has_conflicts
         assert ctx.conflict_report.highest_severity is ConflictSeverity.HIGH
 
+    def test_primary_diagnosis_conflict_requires_human_review(self):
+        ra = _doc(
+            "ra.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Diagnosis: Rheumatoid Arthritis",
+        )
+        psa = _doc(
+            "psa.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Diagnosis: Psoriatic Arthritis",
+        )
+
+        ctx = CaseAssemblyEngine().assemble("C1", [ra, psa])
+
+        dx = [c for c in ctx.conflict_report.conflicts if c.fact_type == "diagnosis"]
+        assert dx
+        assert dx[0].severity is ConflictSeverity.HIGH
+        assert ctx.conflict_report.requires_human_review is True
+
+    def test_unlabeled_current_diagnosis_conflicts_with_labeled_diagnosis(self):
+        psa = _doc(
+            "psa.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            (
+                "Patient: Alan Grant. ID: CON006. Clinical summary: Patient "
+                "being treated for severe Psoriatic Arthritis. MTX failed. "
+                "TB negative. Rheum consult complete."
+            ),
+        )
+        ra = _doc(
+            "ra.txt",
+            DocumentCategory.PRIOR_AUTH_FORM,
+            "Patient: Alan Grant. ID: CON006. Diagnosis: Rheumatoid Arthritis. Requested: Humira.",
+        )
+
+        ctx = CaseAssemblyEngine().assemble("C1", [psa, ra])
+
+        dx = [c for c in ctx.conflict_report.conflicts if c.fact_type == "diagnosis"]
+        assert dx
+        assert dx[0].severity is ConflictSeverity.HIGH
+        assert ctx.conflict_report.requires_human_review is True
+        assert ctx.patient_case.member_id == "CON006"
+        assert [
+            c for c in ctx.conflict_report.conflicts if c.fact_type == "patient_name"
+        ] == []
+        assert [
+            c for c in ctx.conflict_report.conflicts if c.fact_type == "member_id"
+        ] == []
+        joined = " ".join(dx[0].values).lower()
+        assert "psoriatic arthritis" in joined
+        assert "rheumatoid arthritis" in joined
+
+    def test_contextual_history_diagnosis_does_not_conflict(self):
+        ra = _doc(
+            "ra.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Diagnosis: Rheumatoid Arthritis",
+        )
+        history = _doc(
+            "history.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "History of Psoriatic Arthritis",
+        )
+
+        ctx = CaseAssemblyEngine().assemble("C1", [ra, history])
+
+        assert ctx.patient_case.diagnosis == "Rheumatoid Arthritis"
+        assert [
+            c for c in ctx.conflict_report.conflicts if c.fact_type == "diagnosis"
+        ] == []
+        assert ctx.conflict_report.requires_human_review is False
+
+    def test_rule_out_and_differential_diagnoses_do_not_conflict(self):
+        ra = _doc(
+            "ra.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Diagnosis: Rheumatoid Arthritis",
+        )
+        rule_out = _doc(
+            "rule-out.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Diagnosis: rule out Psoriatic Arthritis",
+        )
+        differential = _doc(
+            "differential.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Differential diagnosis: Psoriatic Arthritis",
+        )
+
+        ctx = CaseAssemblyEngine().assemble("C1", [ra, rule_out, differential])
+
+        assert ctx.patient_case.diagnosis == "Rheumatoid Arthritis"
+        assert [
+            c for c in ctx.conflict_report.conflicts if c.fact_type == "diagnosis"
+        ] == []
+
+    def test_tb_negative_and_positive_results_conflict(self):
+        negative = _doc(
+            "tb-negative.txt",
+            DocumentCategory.LAB_RESULT,
+            "TB negative",
+        )
+        positive = _doc(
+            "quantiferon-positive.txt",
+            DocumentCategory.LAB_RESULT,
+            "Quantiferon-TB Gold POSITIVE",
+        )
+
+        ctx = CaseAssemblyEngine().assemble("C1", [negative, positive])
+
+        tb = [
+            c for c in ctx.conflict_report.conflicts
+            if c.fact_type == "tb_screen_result"
+        ]
+        assert tb
+        assert tb[0].severity is ConflictSeverity.HIGH
+        assert ctx.conflict_report.requires_human_review is True
+        tb_facts = {
+            e.normalized_fact
+            for e in ctx.evidence
+            if e.fact_type == "tb_screen_result"
+        }
+        assert tb_facts == {
+            "tb_screen_result: negative",
+            "tb_screen_result: positive",
+        }
+
+    def test_unresolved_high_conflict_reduces_complete_case_confidence(self):
+        complete = _doc(
+            "complete.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Patient Name: Harold Greene\n"
+            "Member ID: WP-1\n"
+            "Date of Birth: 1970-01-01\n"
+            "Diagnosis: Rheumatoid Arthritis\n"
+            "ICD-10: M06.9\n"
+            "Procedure: Humira\n"
+            "CPT: 12345\n"
+            "Insurance Company: Payer\n"
+            "Status: DENIED\n"
+            "Physician: Dr. Patel",
+        )
+        conflict = _doc(
+            "conflict.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Diagnosis: Psoriatic Arthritis",
+        )
+
+        baseline = CaseAssemblyEngine().assemble("C1", [complete])
+        conflicted = CaseAssemblyEngine().assemble("C1", [complete, conflict])
+
+        assert baseline.patient_case.confidence_score == 1.0
+        assert conflicted.patient_case.confidence_score == 0.65
+
+    def test_provider_role_normalization_preserves_provenance(self):
+        rheum = _doc(
+            "rheum.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Rheum consult completed",
+        )
+        chiro = _doc(
+            "chiro.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Seen by Chiropractic Care",
+        )
+
+        ctx = CaseAssemblyEngine().assemble("C1", [rheum, chiro])
+
+        specialist = [
+            e for e in ctx.evidence if e.fact_type == "criterion_specialist"
+        ]
+        assert len(specialist) == 1
+        assert specialist[0].normalized_fact == (
+            "criterion_specialist: rheumatology specialist"
+        )
+        assert specialist[0].source_filename == "rheum.txt"
+
+    def test_conflicting_provider_roles_require_human_review(self):
+        rheum = _doc(
+            "rheum.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Rheumatologist recommends Humira.",
+        )
+        chiro = _doc(
+            "chiro.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Chiropractor recommends Humira.",
+        )
+
+        ctx = CaseAssemblyEngine().assemble("C1", [rheum, chiro])
+
+        provider = [
+            c for c in ctx.conflict_report.conflicts
+            if c.fact_type == "provider_role"
+        ]
+        assert provider
+        assert provider[0].severity is ConflictSeverity.MEDIUM
+        assert ctx.conflict_report.requires_human_review is True
+        joined = " ".join(provider[0].values).lower()
+        assert "rheumatology specialist" in joined
+        assert "chiropractic provider" in joined
+
+    def test_step_therapy_failed_and_refused_conflict(self):
+        failed = _doc(
+            "failed.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Methotrexate failed after 12 weeks.",
+        )
+        refused = _doc(
+            "refused.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Patient refused methotrexate.",
+        )
+
+        ctx = CaseAssemblyEngine().assemble("C1", [failed, refused])
+
+        step = [
+            c for c in ctx.conflict_report.conflicts
+            if c.fact_type == "step_therapy_status"
+        ]
+        assert step
+        assert step[0].severity is ConflictSeverity.HIGH
+        assert ctx.conflict_report.requires_human_review is True
+        statuses = {
+            e.normalized_fact
+            for e in ctx.evidence
+            if e.fact_type == "step_therapy_status"
+        }
+        assert statuses == {
+            "step_therapy_status: failed",
+            "step_therapy_status: refused",
+        }
+
+    def test_dermatology_role_normalizes_as_specialist(self):
+        derm = _doc(
+            "derm.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Derm follow-up completed",
+        )
+
+        ctx = CaseAssemblyEngine().assemble("C1", [derm])
+
+        specialist = [
+            e for e in ctx.evidence if e.fact_type == "criterion_specialist"
+        ]
+        assert specialist
+        assert specialist[0].normalized_fact == (
+            "criterion_specialist: dermatology specialist"
+        )
+
 
 class TestMissingInformation:
     def test_missing_required_fields_flagged(self):
@@ -130,3 +382,45 @@ class TestAuthoritativeResolution:
         rf = ctx.resolved_facts.get("denial_reason")
         assert rf is not None
         assert rf.source_filename == "denial.txt"
+
+
+class TestHumiraWorkflowNonRegression:
+    def test_humira_approval_workflow_still_approves(self):
+        docs = [
+            _doc(
+                "demographics.txt",
+                DocumentCategory.CLINICAL_NOTE,
+                "Patient Name: John Smith\n"
+                "Member ID: JS-123\n"
+                "Diagnosis: Rheumatoid Arthritis\n",
+            ),
+            _doc(
+                "therapy.txt",
+                DocumentCategory.CLINICAL_NOTE,
+                "Methotrexate failed after 12 months\n",
+            ),
+            _doc(
+                "pa.txt",
+                DocumentCategory.PRIOR_AUTH_FORM,
+                "TB screen negative\n"
+                "Rheumatologist recommendation\n"
+                "Requested Medication: Humira\n"
+                "Status: DENIED\n",
+            ),
+        ]
+
+        ctx = CaseAssemblyEngine().assemble("C1", docs)
+        review = ClinicalReviewEngine().review(
+            ctx.patient_case,
+            "\n".join(d.raw_text for d in docs),
+        )
+
+        assert review.recommendation is Recommendation.APPROVE
+        assert review.missing_criteria == []
+
+    def test_humira_denial_workflow_still_denies_when_criteria_missing(self):
+        ctx = CaseAssemblyEngine().assemble("C1", [DENIAL])
+        review = ClinicalReviewEngine().review(ctx.patient_case, DENIAL.raw_text)
+
+        assert review.recommendation is Recommendation.DENY
+        assert review.missing_criteria

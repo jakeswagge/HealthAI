@@ -9,15 +9,32 @@ extraction, not a logic change.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from app.audit.repository import AuditRepository
 from app.cases.document_repository import CaseDocumentRepository
 from app.cases.lifecycle import CaseLifecycle
 from app.ingestion.engine import DocumentIngestionEngine, IngestionResult
 from app.ocr.repository import OCRResultRepository
-from app.ocr.providers import describe_ocr_provider
+from app.ocr.providers import OCRReadiness, describe_ocr_provider, ocr_readiness
 from app.models.audit_event import AuditActor, AuditEventType
 from app.models.case_document import CaseDocument, DocumentCategory, classify_document
 from app.models.ocr_result import DEFAULT_OCR_CONFIDENCE_THRESHOLD, OCRPageResult
+
+
+@dataclass(frozen=True)
+class DocumentOCRStatus:
+    """Derived OCR status for one stored document."""
+
+    document_id: str
+    filename: str
+    status: str
+    detail: str
+    ocr_pages: int
+    processing_method: str
+
+
+_IMAGE_EXTS = {"png", "jpg", "jpeg", "tif", "tiff", "bmp", "gif"}
 
 
 class IngestionService:
@@ -178,3 +195,75 @@ class IngestionService:
 
     def describe_ocr(self) -> str:
         return describe_ocr_provider(self.ingestion.ocr)
+
+    def ocr_readiness(self) -> OCRReadiness:
+        return ocr_readiness(self.ingestion.ocr)
+
+    def document_ocr_statuses(self, case_id: str) -> list[DocumentOCRStatus]:
+        """Return reviewer-facing OCR provenance for every document in a case."""
+        readiness = self.ocr_readiness()
+        statuses: list[DocumentOCRStatus] = []
+        for document in self.list_documents(case_id):
+            pages = self.ocr_results_for_document(document.document_id)
+            statuses.append(
+                _document_ocr_status(document, pages, readiness)
+            )
+        return statuses
+
+
+def _ext(filename: str) -> str:
+    return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+
+def _document_ocr_status(
+    document: CaseDocument,
+    pages: list[OCRPageResult],
+    readiness: OCRReadiness,
+) -> DocumentOCRStatus:
+    if pages:
+        method = pages[0].processing_method.value
+        if method == "MOCK":
+            status = "Mock OCR used"
+            detail = "Mock OCR is test-only and does not validate scanned-document support."
+        else:
+            status = "OCR used"
+            detail = "Page text was produced by the active OCR provider."
+        return DocumentOCRStatus(
+            document_id=document.document_id,
+            filename=document.filename,
+            status=status,
+            detail=detail,
+            ocr_pages=len(pages),
+            processing_method=method,
+        )
+
+    ext = _ext(document.filename)
+    if ext == "txt":
+        status = "TXT files do not use OCR"
+        detail = "Stored text was decoded directly from the TXT upload."
+        method = "TEXT"
+    elif ext == "pdf" and document.raw_text.strip():
+        status = "Text layer used"
+        detail = "This PDF had embedded text, so OCR was skipped."
+        method = "TEXT_LAYER"
+    elif ext in _IMAGE_EXTS or ext == "pdf":
+        status = "OCR unavailable" if not readiness.is_available else "No OCR rows"
+        detail = (
+            readiness.message
+            if not readiness.is_available
+            else "No persisted OCR output exists for this document."
+        )
+        method = "NONE"
+    else:
+        status = "OCR not applicable"
+        detail = "This document type was stored without OCR output."
+        method = "NONE"
+
+    return DocumentOCRStatus(
+        document_id=document.document_id,
+        filename=document.filename,
+        status=status,
+        detail=detail,
+        ocr_pages=0,
+        processing_method=method,
+    )

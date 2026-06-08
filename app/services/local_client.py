@@ -34,20 +34,49 @@ CPT_RE = re.compile(r"\b(\d{5})\b")
 # Field separator: a colon and/or a run of dots (dotted "leader" layouts),
 # surrounded by optional whitespace. Lets one parser handle both
 # "Label: value" and "Label ......... value" styles.
-SEP = r"\s*[:.]+\s*"
+SEP = r"\s*(?::+|=|\.{2,})\s*"
+LOOSE_SEP = r"\s*(?::+|=|#{1,2}|\.{2,})?\s*"
 FIELD_LABELS = {
-    "patient_name": (r"member\s+name", r"patient\s+name", r"patient", r"member"),
-    "member_id": (r"member\s*id", r"member\s*#", r"subscriber\s*id", r"id\s*#"),
-    "date_of_birth": (r"date\s+of\s+birth", r"dob"),
-    "diagnosis": (r"diagnosis", r"dx"),
+    "patient_name": (
+        r"member\s+name",
+        r"patient\s+name",
+        r"patnt\s+name",
+        r"patient",
+        r"member",
+        r"name",
+        r"pt",
+    ),
+    "member_id": (
+        r"member\s*id",
+        r"member\s*#",
+        r"subscriber\s*id",
+        r"memb\s*#",
+        r"memb",
+        r"id\s*#",
+        r"id",
+    ),
+    "date_of_birth": (r"date\s+of\s+birth", r"do\s*b", r"dob"),
+    "diagnosis": (
+        r"diaganosis",
+        r"primary\s+diagnosis\s+of",
+        r"diagnosis\s+of",
+        r"diagnosis",
+        r"dx",
+    ),
     "requested_service": (
+        r"req\s+medication",
         r"requested\s+medication",
         r"requested\s+drug",
         r"requested\s+treatment",
         r"requested\s+service",
+        r"requested",
+        r"service\s+requested",
+        r"requesting\s+authorization\s+for",
         r"procedure",
         r"service",
         r"medication",
+        r"drug",
+        r"req",
     ),
     "insurance_company": (
         r"payer",
@@ -66,6 +95,20 @@ FIELD_LABELS = {
 ALL_LABELS = tuple(
     label for labels in FIELD_LABELS.values() for label in labels
 ) + (
+    r"clinical\s+notes?",
+    r"clinical\s+summary",
+    r"hx",
+    r"history",
+    r"notes?",
+    r"provider",
+    r"specialist",
+    r"signed",
+    r"methotrexate\s+status",
+    r"tb\s+status",
+    r"tb\s+screen",
+    r"primary\s+diagnosis",
+    r"due\s+to",
+    r"presents",
     r"request\s+status",
     r"status",
     r"decision",
@@ -75,6 +118,11 @@ ALL_LABELS = tuple(
 )
 NEXT_LABEL_RE = re.compile(rf"\s+(?=(?:{'|'.join(ALL_LABELS)}){SEP})", re.IGNORECASE)
 ANY_LABEL_RE = re.compile(rf"^\s*(?:{'|'.join(ALL_LABELS)}){SEP}", re.IGNORECASE)
+LOOSE_NEXT_LABEL_RE = re.compile(
+    rf"\s+(?=(?:{'|'.join(ALL_LABELS)})\b{LOOSE_SEP})",
+    re.IGNORECASE,
+)
+NOISE_RE = re.compile(r"[*~><]{2,}|-{2,}")
 
 
 def _extract_document_text(messages: list[dict[str, str]]) -> str:
@@ -98,12 +146,130 @@ def _find(pattern: str, text: str, group: int = 1) -> str | None:
     return value or None
 
 
+def _prepare_text(text: str) -> str:
+    """Normalize OCR/fax noise while preserving readable text and newlines."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"/{2,}", "\n", text)
+    text = text.replace("[", " ").replace("]", " ")
+    text = re.sub(r":{2,}", ":", text)
+    text = re.sub(r"\s=\s", ":", text)
+    text = re.sub(r"(?<=\w)=(?=\w)", ":", text)
+    text = NOISE_RE.sub(" ", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
+
+
+def _strip_value_punctuation(value: str) -> str:
+    return value.strip().strip(" .,:;[]{}()*#")
+
+
 def _clean_value(value: str | None) -> str | None:
     if not value:
         return None
     value = NEXT_LABEL_RE.split(value.splitlines()[0].strip(), maxsplit=1)[0]
-    value = re.sub(r"\s{2,}", " ", value).strip(" .")
+    value = LOOSE_NEXT_LABEL_RE.split(value, maxsplit=1)[0]
+    value = re.sub(r"\s{2,}", " ", value)
+    value = _strip_value_punctuation(value)
     return value or None
+
+
+def _first_token(value: str | None) -> str | None:
+    value = _clean_value(value)
+    if not value:
+        return None
+    m = re.match(r"#?([A-Za-z0-9][A-Za-z0-9_-]*)", value)
+    return m.group(1) if m else value
+
+
+def _normalize_dob(value: str | None) -> str | None:
+    value = _clean_value(value)
+    if not value:
+        return None
+    m = re.search(
+        r"\b(\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}[- ][A-Za-z]{3,9}[- ]\d{2,4})\b",
+        value,
+    )
+    return m.group(1) if m else value
+
+
+def _normalize_diagnosis(value: str | None) -> str | None:
+    value = _clean_value(value)
+    if not value:
+        return None
+    value = re.sub(r"^(?:of|for)\s+", "", value, flags=re.IGNORECASE)
+    low = value.lower()
+    if re.fullmatch(r"ra", low):
+        return "Rheumatoid Arthritis"
+    if "rheumatiod artharitis" in low:
+        return "Rheumatoid Arthritis"
+    m = re.search(r"\brheumatoid\s+arthritis\b", value, re.IGNORECASE)
+    if m and len(value.split()) > len(m.group(0).split()) + 2:
+        return m.group(0)
+    for diagnosis in (
+        "psoriatic arthritis",
+        "osteoarthritis",
+        "crohn's disease",
+        "crohn disease",
+    ):
+        m = re.search(rf"\b{re.escape(diagnosis)}\b", value, re.IGNORECASE)
+        if m and len(value.split()) > len(m.group(0).split()) + 2:
+            return m.group(0)
+    return value
+
+
+def _normalize_requested_service(value: str | None) -> str | None:
+    value = _clean_value(value)
+    if not value:
+        return None
+    value = re.split(
+        r"\b(?:"
+        r"is\s+fda-approved|fda-approved|covered\s+under\s+your\s+plan|"
+        r"covered\s+for|conditions\s+such\s+as|conditions\s+like|"
+        r"approved\s+for|indicated\s+for|educational\s+only"
+        r")\b",
+        value,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0]
+    value = _clean_value(value)
+    if not value:
+        return None
+    m = re.search(r"\b(humeria|humira)(?:\s+\d+\s*mg)?\b", value, re.IGNORECASE)
+    if m:
+        matched = m.group(0)
+        if matched.lower().startswith("humeria"):
+            return re.sub(r"(?i)^humeria", "Humira", matched)
+        return _strip_value_punctuation(matched)
+
+    known_service = re.search(
+        r"\b("
+        r"adalimumab|enbrel|etanercept|"
+        r"(?:cardiac\s+)?mri(?:\s+[a-z]+){0,4}|"
+        r"(?:chest\s+)?ct(?:\s+[a-z]+){0,4}|"
+        r"physical\s+therapy|physiotherapy"
+        r")\b",
+        value,
+        re.IGNORECASE,
+    )
+    if known_service:
+        return _strip_value_punctuation(known_service.group(0))
+
+    low = value.lower()
+    if any(
+        cue in low
+        for cue in (
+            "fda-approved",
+            "covered under your plan",
+            "conditions such as",
+            "conditions like",
+            "approved for",
+            "educational only",
+        )
+    ):
+        return None
+    if len(value.split()) > 8:
+        return None
+    return value
 
 
 def _is_placeholder_or_prose(value: str | None) -> bool:
@@ -135,24 +301,55 @@ def _is_placeholder_or_prose(value: str | None) -> bool:
 def _field_value(field: str, text: str) -> str | None:
     labels = FIELD_LABELS[field]
     pattern = re.compile(rf"\b(?:{'|'.join(labels)}){SEP}(.*)$", re.IGNORECASE)
+    label_only = re.compile(rf"^\s*(?:{'|'.join(labels)})\s*$", re.IGNORECASE)
     lines = text.splitlines()
     for index, line in enumerate(lines):
         match = pattern.search(line)
-        if not match:
-            continue
-        raw = match.group(1).strip()
-        if not raw:
+        if match:
+            raw = match.group(1).strip()
+            if not raw:
+                for follow in lines[index + 1:]:
+                    candidate = follow.strip()
+                    if not candidate:
+                        continue
+                    if ANY_LABEL_RE.search(candidate):
+                        break
+                    raw = candidate
+                    break
+            value = _clean_value(raw)
+            if value:
+                return value
+
+        if label_only.search(line):
             for follow in lines[index + 1:]:
                 candidate = follow.strip()
                 if not candidate:
                     continue
                 if ANY_LABEL_RE.search(candidate):
                     break
-                raw = candidate
+                value = _clean_value(candidate)
+                if value:
+                    return value
                 break
-        value = _clean_value(raw)
-        if value:
-            return value
+
+    if field in {"physician_name", "insurance_company"}:
+        return None
+
+    loose_labels = labels
+    if field == "requested_service":
+        loose_labels = tuple(label for label in labels if label != r"service")
+    if field == "diagnosis":
+        loose_labels = tuple(label for label in labels if label != r"diagnosis")
+
+    flat = re.sub(r"\s+", " ", text)
+    loose = re.compile(
+        rf"(?<!\w)(?:{'|'.join(loose_labels)})\b{LOOSE_SEP}(.+?)"
+        rf"(?=\s+(?:{'|'.join(ALL_LABELS)})\b{LOOSE_SEP}|\s*$)",
+        re.IGNORECASE,
+    )
+    match = loose.search(flat)
+    if match:
+        return _clean_value(match.group(1))
     return None
 
 
@@ -177,6 +374,18 @@ def _detect_decision(text: str) -> str:
             return "pending"
         if "partial" in s:
             return "partial"
+        if any(
+            k in s
+            for k in (
+                "cannot approve",
+                "can't approve",
+                "unable to approve",
+                "not approved",
+                "deni",
+                "not medically necessary",
+            )
+        ):
+            return "denied"
         if "deni" in s:
             return "denied"
         if "approv" in s or "authoriz" in s:
@@ -193,6 +402,10 @@ def _detect_decision(text: str) -> str:
                 "coverage is denied",
                 "request is denied",
                 "has been denied",
+                "cannot approve",
+                "can't approve",
+                "unable to approve",
+                "not approved",
                 "not medically necessary",
             )
         ):
@@ -241,20 +454,20 @@ def _extract_denial_reason(text: str, decision: str) -> str | None:
 
 def _parse(document_text: str) -> dict:
     """Parse known prior-authorization fields from raw document text."""
-    text = document_text
+    text = _prepare_text(document_text)
 
-    patient_name = _field_value("patient_name", text)
-    member_id = _field_value("member_id", text)
-    dob = _field_value("date_of_birth", text)
+    patient_name = _clean_name(_field_value("patient_name", text))
+    member_id = _first_token(_field_value("member_id", text))
+    dob = _normalize_dob(_field_value("date_of_birth", text))
 
     diagnosis = _field_value("diagnosis", text)
     # Strip a leading ICD-10 code embedded in the diagnosis line.
     if diagnosis:
         diagnosis = re.sub(r"^[A-TV-Z][0-9][0-9AB](?:\.[0-9A-Z]{1,4})?\s*\(?", "", diagnosis)
         diagnosis = diagnosis.strip(" ()")
-        diagnosis = re.sub(r"\s+", " ", diagnosis) or None
+        diagnosis = _normalize_diagnosis(re.sub(r"\s+", " ", diagnosis))
 
-    requested_service = _field_value("requested_service", text)
+    requested_service = _normalize_requested_service(_field_value("requested_service", text))
     if _is_placeholder_or_prose(requested_service):
         requested_service = None
 

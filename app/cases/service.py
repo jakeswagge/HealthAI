@@ -72,7 +72,7 @@ from app.cases.explainability_service import (
 )
 from app.cases.export_service import ExportService
 from app.cases.governance_service import GovernanceService
-from app.cases.ingestion_service import IngestionService
+from app.cases.ingestion_service import DocumentOCRStatus, IngestionService
 from app.cases.payer_service import PayerAppeal, PayerReview, PayerService
 from app.cases.resolution_service import ResolutionService
 from app.cases.review_service import ReviewService
@@ -306,6 +306,12 @@ class CaseService:
 
     def describe_ocr(self) -> str:
         return self._ingestion.describe_ocr()
+
+    def ocr_readiness(self):
+        return self._ingestion.ocr_readiness()
+
+    def document_ocr_statuses(self, case_id: str) -> list[DocumentOCRStatus]:
+        return self._ingestion.document_ocr_statuses(case_id)
 
     # ------------------------------------------------------------------ #
     # Assembly + evidence quality + reviewer workbench (Milestone 6/7 + 10)

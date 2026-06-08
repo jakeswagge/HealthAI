@@ -214,6 +214,10 @@ class PatientCase(BaseModel):
         name = self.patient_name or "Unknown patient"
         service = self.requested_service or "an unspecified service"
         payer = self.insurance_company or "the insurer"
+        if self.decision is Decision.PENDING:
+            return f"{name} — request is pending review for {service}."
+        if self.decision is Decision.UNKNOWN:
+            return f"{name} — request status is unknown for {service}."
         decision = self.decision.value.upper()
         line = f"{name} — {payer} {decision} the request for {service}."
         if self.decision is Decision.DENIED and self.denial_reason:

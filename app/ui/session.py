@@ -176,6 +176,18 @@ def set_persisted_case_id(case_id: Optional[str]) -> None:
     st.session_state[KEY_PERSISTED_CASE_ID] = case_id
 
 
+def refresh_assembled_case(case_id: str, patient_case) -> None:
+    """Make an assembled database case the active downstream case."""
+    init_state()
+    st.session_state[KEY_PERSISTED_CASE_ID] = case_id
+    st.session_state[KEY_CASE] = patient_case
+    st.session_state[KEY_REVIEW] = None
+    st.session_state[KEY_REVIEW_USED_AI] = False
+    st.session_state[KEY_EXTRACTION_META] = None
+    st.session_state[KEY_APPEAL] = None
+    st.session_state[KEY_APPEAL_USED_AI] = False
+
+
 def invalidate_case_and_review() -> None:
     """Force re-extraction and re-review on next request (explicit reprocess).
 

@@ -130,6 +130,29 @@ class TestInvalidate:
         assert session.get_case() == "CASE"
         assert session.get_review() is None
 
+    def test_refresh_assembled_case_sets_case_and_clears_downstream_caches(
+        self,
+        fake_state,
+    ):
+        session.set_active_document("sig-1", "doc1.txt")
+        session.set_text("text", page_count=2)
+        session.set_case("OLD_CASE", session.ExtractionMeta(attempts=1))
+        session.set_review("STALE_REVIEW", used_ai=True)
+        session.set_appeal("STALE_APPEAL", used_ai=True)
+        session.set_persisted_case_id("case-old")
+
+        session.refresh_assembled_case("case-new", "ASSEMBLED_CASE")
+
+        assert session.get_persisted_case_id() == "case-new"
+        assert session.get_text() == "text"
+        assert session.get_page_count() == 2
+        assert session.get_case() == "ASSEMBLED_CASE"
+        assert session.get_extraction_meta() is None
+        assert session.get_review() is None
+        assert session.get_review_used_ai() is False
+        assert session.get_appeal() is None
+        assert session.get_appeal_used_ai() is False
+
 
 class TestClearDocument:
     def test_clear_resets_everything(self, fake_state):

@@ -37,7 +37,7 @@ from app.agents.medical_extraction_agent import (
     ExtractionError,
     MedicalExtractionAgent,
 )
-from app.appeals.appeal_agent import AppealGenerationAgent
+from app.appeals.appeal_agent import AppealAgentError, AppealGenerationAgent
 from app.extraction.extractor import extract_text_from_bytes
 from app.extraction.size_validator import DocumentSizeValidator
 from app.extraction.validation import ValidationError
@@ -269,7 +269,11 @@ def _get_or_generate_appeal(force: bool = False):
 
     with st.spinner("Generating appeal letter..."):
         agent = AppealGenerationAgent(llm_client=get_llm_client())
-        result = agent.generate(case, review)
+        try:
+            result = agent.generate(case, review)
+        except AppealAgentError as exc:
+            st.info(str(exc))
+            return None, False
 
     session.set_appeal(result.appeal, result.used_ai)
     if record and record.patient_case is not None:
@@ -631,14 +635,25 @@ def _render_appeal_tab() -> None:
     if reprocess:
         session.invalidate_appeal()
 
-    if cached_appeal is None and not run and not _database_case_ready():
-        st.info("Click **Generate appeal** to draft a letter for this document.")
+    case_for_gate = (
+        record.patient_case
+        if record and record.patient_case is not None
+        else session.get_case()
+    )
+    if cached_appeal is None and not run and not reprocess:
+        if case_for_gate is not None and case_for_gate.decision is not Decision.DENIED:
+            st.info("Appeal generation requires an active denied case.")
+        else:
+            st.info("Click **Generate appeal** to draft a letter for this document.")
         return
 
     # Ensure prerequisites (case + review) exist; these are cached and only
     # invoke Claude if not already computed.
     case = _get_or_extract_case(force=False)
     if case is None:
+        return
+    if cached_appeal is None and case.decision is not Decision.DENIED:
+        st.info("Appeal generation requires an active denied case.")
         return
     review, _ = _get_or_run_review(force=False)
     if review is None:
@@ -781,7 +796,7 @@ def render_dashboard() -> None:
             "Clinical Review",
             "Appeal Generator",
             "Document Ingestion",
-            "OCR Explorer",
+            "OCR Status",
             "Document Assembly",
             "Evidence Explorer",
             "Evidence Quality",

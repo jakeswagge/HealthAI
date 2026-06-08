@@ -39,6 +39,12 @@ from app.models.review_result import (
     Recommendation,
     ReviewResult,
 )
+from app.review.clinical_nlp import (
+    ClinicalSignal,
+    canonical_diagnosis,
+    extract_clinical_signals,
+    step_therapy_status,
+)
 
 
 SPECIALIST_VOCABULARY = [
@@ -50,11 +56,14 @@ SPECIALIST_VOCABULARY = [
     "specialist evaluation",
     "evaluated by specialist",
     "seen by specialist",
+    "seen by rheumatology",
+    "seen by rheumatologist",
     "under care of rheumatology",
     "referred to rheumatology",
     "board-certified rheumatologist",
     "consulting rheumatologist",
     "reviewed by rheumatology service",
+    "rheum",
 ]
 
 TB_SCREEN_VOCABULARY = [
@@ -83,7 +92,7 @@ STEP_THERAPY_VOCABULARY = [
 ]
 
 _NEGATION_BEFORE_RE = re.compile(
-    r"\b(no|not|without|absent|missing|lacks?|lack of|undocumented)\b"
+    r"\b(no|not|without|absent|missing|lacks?|lack of|undocumented|refused|declined)\b"
     r"(?:\W+\w+){0,5}\W*$",
     re.IGNORECASE,
 )
@@ -138,6 +147,426 @@ def _contains_any(
     return None
 
 
+_TB_NEGATIVE_CUES = (
+    "negative",
+    "nonreactive",
+    "non-reactive",
+    "not detected",
+    "no evidence of",
+    "no signs of",
+    "without evidence of",
+    "clearance",
+)
+_TB_POSITIVE_CUES = (
+    "positive",
+    "reactive",
+    "detected",
+    "active tb",
+    "active tuberculosis",
+    "latent tb infection",
+    "latent tuberculosis infection",
+)
+_TB_ABSENCE_CUES = (
+    "no tb screening",
+    "no tuberculosis screening",
+    "no tb test",
+    "no tuberculosis test",
+    "did not receive",
+    "not received",
+    "not provided",
+    "not performed",
+    "not documented",
+    "documentation was not provided",
+    "documentation not provided",
+    "missing",
+    "unavailable",
+    "without tb screening",
+    "without tuberculosis screening",
+)
+_TB_TEST_CUES = (
+    "screen",
+    "screening",
+    "test",
+    "result",
+    "quantiferon",
+    "t-spot",
+    "ppd",
+)
+_STEP_SUCCESS_CUES = (
+    "failed",
+    "failure",
+    "trial",
+    "tried",
+    "completed",
+    "inadequate response",
+    "persistent symptoms",
+    "despite",
+    "ineffective",
+    "refractory",
+    "uncontrolled",
+    "intolerant",
+    "intolerance",
+)
+_STEP_ABSENCE_CUES = (
+    "no methotrexate",
+    "no mtx",
+    "no dmard",
+    "not tried",
+    "not trialed",
+    "not documented",
+    "missing",
+    "without methotrexate",
+    "without mtx",
+    "without dmard",
+    "refused",
+    "refusal",
+    "declined",
+)
+_SPECIALIST_ABSENCE_CUES = (
+    "no specialist",
+    "no rheumatologist",
+    "no rheumatology",
+    "not documented",
+    "missing",
+    "without specialist",
+    "without rheumatology",
+)
+_BIOLOGIC_PRIOR_CUES = (
+    "previous",
+    "previously",
+    "prior",
+    "past",
+    "failed",
+    "failure",
+    "discontinued",
+    "stopped",
+    "history of",
+)
+_NEGATIVE_INFECTION_CUES = (
+    "negative",
+    "nonreactive",
+    "non-reactive",
+    "not detected",
+    "no evidence of",
+    "no signs of",
+)
+_EDUCATIONAL_CONDITION_CUES = (
+    "conditions such as",
+    "conditions like",
+    "condition such as",
+    "condition like",
+    "approved for",
+    "indicated for",
+    "fda-approved",
+    "covered under your plan",
+    "covered for",
+)
+_POLICY_TEXT_CUES = (
+    "policy requires",
+    "clinical policy",
+    "guideline requires",
+    "must be",
+    "prior to starting",
+    "policy states",
+)
+_CLINICAL_KEYWORD_CUES = (
+    "rheumatoid arthritis",
+    "psoriatic arthritis",
+    "plaque psoriasis",
+    "crohn",
+    "ulcerative colitis",
+    "tuberculosis",
+    "tb",
+    "tb screen",
+    "tb screening",
+    "humira",
+    "adalimumab",
+    "enbrel",
+    "etanercept",
+    "methotrexate",
+)
+_TB_MISSING_DOCUMENTATION_RE = re.compile(
+    r"(?:"
+    r"(?:did\s+not\s+receive|not\s+received|not\s+provided|not\s+documented|missing)"
+    r".{0,100}\b(?:tb|tuberculosis)\b.{0,60}\b(?:screen|screening|test|documentation|result)\b"
+    r"|"
+    r"\b(?:tb|tuberculosis)\b.{0,60}\b(?:screen|screening|test|documentation|result)\b"
+    r".{0,100}(?:did\s+not\s+receive|not\s+received|not\s+provided|not\s+documented|missing)"
+    r"|"
+    r"\brequires?\b.{0,80}\bnegative\b.{0,40}\b(?:tb|tuberculosis)\b"
+    r".{0,60}\b(?:screen|screening|test)\b.{0,160}"
+    r"(?:documentation\s+(?:was\s+)?not\s+provided|not\s+provided|missing)"
+    r")",
+    re.IGNORECASE | re.DOTALL,
+)
+_NONCOVERED_OSTEOARTHRITIS_RE = re.compile(
+    r"(?:"
+    r"\bhumira\b.{0,120}\bnot\s+indicated\b.{0,120}\bosteoarthritis\b"
+    r"|"
+    r"\bosteoarthritis\b.{0,120}\bhumira\b.{0,120}\bnot\s+indicated\b"
+    r"|"
+    r"\bdiagnosis\s+of\s+osteoarthritis\b.{0,160}"
+    r"\bnot\s+(?:indicated|considered\s+medically\s+necessary)\b"
+    r")",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _low(value: str) -> str:
+    return value.lower()
+
+
+def _has_any(value: str, cues: tuple[str, ...]) -> bool:
+    low = _low(value)
+    return any(cue in low for cue in cues)
+
+
+def _is_educational_text(value: str) -> bool:
+    low = _low(value)
+    if not _has_any(low, _CLINICAL_KEYWORD_CUES):
+        return False
+    return _has_any(low, _EDUCATIONAL_CONDITION_CUES) or _has_any(
+        low, _POLICY_TEXT_CUES
+    )
+
+
+def _remove_educational_text(text: str) -> str:
+    parts = re.split(r"(?<=[.!?])\s+|\n+", text)
+    kept = [part for part in parts if not _is_educational_text(part)]
+    return " \n ".join(kept)
+
+
+def _has_missing_tb_documentation(text: str) -> bool:
+    return bool(_TB_MISSING_DOCUMENTATION_RE.search(text))
+
+
+def _has_noncovered_osteoarthritis_indication(text: str) -> bool:
+    return bool(_NONCOVERED_OSTEOARTHRITIS_RE.search(text))
+
+
+def _signals(signals: list[ClinicalSignal], label: str) -> list[ClinicalSignal]:
+    return [s for s in signals if s.label == label]
+
+
+def _signals_any(
+    signals: list[ClinicalSignal],
+    labels: tuple[str, ...],
+) -> list[ClinicalSignal]:
+    return [s for s in signals if s.label in labels]
+
+
+def _signal_note(prefix: str, signal: ClinicalSignal) -> str:
+    flags = []
+    if signal.is_negated:
+        flags.append("negated")
+    if signal.is_historical:
+        flags.append("historical")
+    if signal.is_hypothetical:
+        flags.append("hypothetical")
+    if signal.is_uncertain:
+        flags.append("uncertain")
+    suffix = f"; context={','.join(flags)}" if flags else ""
+    evidence = re.sub(r"\s+", " ", signal.sentence).strip()
+    return f"{prefix} ('{signal.text}'{suffix}; evidence='{evidence}')."
+
+
+def _current_diagnosis_values(
+    signals: list[ClinicalSignal],
+) -> list[tuple[str, ClinicalSignal]]:
+    values: list[tuple[str, ClinicalSignal]] = []
+    seen: set[str] = set()
+    for signal in signals:
+        if not signal.label.startswith("DIAGNOSIS_"):
+            continue
+        canonical = canonical_diagnosis(signal)
+        if canonical is None or canonical in seen:
+            continue
+        seen.add(canonical)
+        values.append((canonical, signal))
+    return values
+
+
+def _is_tb_absence(signal: ClinicalSignal) -> bool:
+    return _has_any(signal.sentence, _TB_ABSENCE_CUES)
+
+
+def _is_tb_negative_screen(signal: ClinicalSignal) -> bool:
+    if signal.is_negated or _is_tb_absence(signal):
+        return False
+    return _has_any(signal.sentence, _TB_NEGATIVE_CUES)
+
+
+def _is_tb_positive(signal: ClinicalSignal) -> bool:
+    if signal.is_negated or signal.is_historical or signal.is_hypothetical:
+        return False
+    if _is_tb_absence(signal) or _is_tb_negative_screen(signal):
+        return False
+    if _has_any(signal.sentence, _TB_POSITIVE_CUES):
+        return True
+    # A bare disease mention without testing language is treated as active risk.
+    if _low(signal.text) in {"tb", "tuberculosis"} and not _has_any(signal.sentence, _TB_TEST_CUES):
+        return True
+    return False
+
+
+def _is_tb_screening_documented(signal: ClinicalSignal) -> bool:
+    if signal.is_negated or _is_tb_absence(signal) or _is_tb_positive(signal):
+        return False
+    return _has_any(signal.text, _TB_TEST_CUES) or _has_any(signal.sentence, _TB_TEST_CUES)
+
+
+def _is_current_biologic(signal: ClinicalSignal) -> bool:
+    if not signal.is_current_affirmed:
+        return False
+    return not _has_any(signal.sentence, _BIOLOGIC_PRIOR_CUES)
+
+
+def _medspacy_contraindications(
+    support_signals: list[ClinicalSignal],
+    deficiency_signals: list[ClinicalSignal],
+) -> list[str]:
+    signals = [*support_signals, *deficiency_signals]
+    found: list[str] = []
+
+    if any(_is_tb_positive(s) for s in _signals(signals, "TB")):
+        found.append("Positive tuberculosis (TB) evidence detected.")
+
+    hep_b = _signals(signals, "HEP_B")
+    if any(
+        s.is_current_affirmed and not _has_any(s.sentence, _NEGATIVE_INFECTION_CUES)
+        for s in hep_b
+    ):
+        found.append("Hepatitis B evidence detected.")
+
+    humira_current = any(_is_current_biologic(s) for s in _signals(signals, "BIOLOGIC_HUMIRA"))
+    enbrel_current = any(_is_current_biologic(s) for s in _signals(signals, "BIOLOGIC_ENBREL"))
+    if humira_current and enbrel_current:
+        found.append("Concurrent biologic therapy detected (Humira and Enbrel).")
+
+    return found
+
+
+def _evaluate_with_medspacy(
+    crit: GuidelineCriterion,
+    support_signals: list[ClinicalSignal],
+    deficiency_signals: list[ClinicalSignal],
+) -> tuple[str, str | None] | None:
+    marker = f"{crit.id} {crit.description}".lower()
+
+    if "tb_screen" in marker or "tuberculosis" in marker:
+        tb_def = _signals(deficiency_signals, "TB")
+        if tb_def:
+            return "unmet", _signal_note("Denial references TB screening", tb_def[0])
+
+        if _has_missing_tb_documentation(" ".join(s.sentence for s in support_signals)):
+            return "unmet", "TB screening documentation is stated as missing or not received."
+
+        tb_support = _signals(support_signals, "TB")
+        positive = next((s for s in tb_support if _is_tb_positive(s)), None)
+        if positive:
+            return "unmet", _signal_note("Positive TB evidence found", positive)
+        absent = next((s for s in tb_support if _is_tb_absence(s)), None)
+        if absent:
+            return "unmet", _signal_note("TB screening absence documented", absent)
+        negative = next((s for s in tb_support if _is_tb_negative_screen(s)), None)
+        if negative:
+            return "met", _signal_note("Negative TB screening evidence found", negative)
+        documented = next((s for s in tb_support if _is_tb_screening_documented(s)), None)
+        if documented:
+            return "met", _signal_note("TB screening evidence found", documented)
+
+    if "dmard" in marker or "methotrexate" in marker or "step_therapy" in marker:
+        step_def = _signals(deficiency_signals, "STEP_THERAPY")
+        if step_def:
+            return "unmet", _signal_note("Denial references step therapy", step_def[0])
+
+        step_support = _signals(support_signals, "STEP_THERAPY")
+        refused = next(
+            (s for s in step_support if step_therapy_status(s) == "refused"),
+            None,
+        )
+        absent = next(
+            (
+                s for s in step_support
+                if s.is_negated
+                or _has_any(s.sentence, _STEP_ABSENCE_CUES)
+                or step_therapy_status(s) == "absent"
+            ),
+            None,
+        )
+        met = next(
+            (
+                s for s in step_support
+                if step_therapy_status(s) == "failed"
+                or (
+                    s.is_current_affirmed
+                    and _has_any(s.sentence, _STEP_SUCCESS_CUES)
+                )
+            ),
+            None,
+        )
+        if refused:
+            return "unmet", _signal_note("Step therapy refusal documented", refused)
+        if absent:
+            return "unmet", _signal_note("Step therapy absence documented", absent)
+        if met:
+            return "met", _signal_note("Step therapy evidence found", met)
+        if step_support:
+            return "unknown", _signal_note(
+                "Step therapy mention lacks trial/failure status",
+                step_support[0],
+            )
+
+    if "specialist" in marker or "rheumatologist" in marker:
+        specialist_labels = ("SPECIALIST_RHEUM", "SPECIALIST_DERM")
+        specialist_def = _signals_any(deficiency_signals, specialist_labels)
+        if specialist_def:
+            return "unmet", _signal_note("Denial references specialist involvement", specialist_def[0])
+
+        specialist_support = _signals_any(support_signals, specialist_labels)
+        absent = next(
+            (
+                s for s in specialist_support
+                if s.is_negated or _has_any(s.sentence, _SPECIALIST_ABSENCE_CUES)
+            ),
+            None,
+        )
+        met = next((s for s in specialist_support if s.is_current_affirmed), None)
+        if met:
+            return "met", _signal_note("Specialist evidence found", met)
+        if absent:
+            return "unmet", _signal_note("Specialist absence documented", absent)
+
+    if "diagnosis" in marker or "rheumatoid arthritis" in marker:
+        ra_def = _signals(deficiency_signals, "DIAGNOSIS_RA")
+        if ra_def:
+            return "unmet", _signal_note("Denial references diagnosis", ra_def[0])
+
+        current_diagnoses = _current_diagnosis_values(support_signals)
+        if len(current_diagnoses) > 1:
+            values = "; ".join(value for value, _ in current_diagnoses)
+            return (
+                "unknown",
+                f"Conflicting current diagnoses require human review ({values}).",
+            )
+
+        ra_support = _signals(support_signals, "DIAGNOSIS_RA")
+        met = next((s for s in ra_support if s.is_current_affirmed), None)
+        if met:
+            return "met", _signal_note("Diagnosis evidence found", met)
+        not_met = next(
+            (
+                s for s in ra_support
+                if s.is_negated or s.is_uncertain or s.is_hypothetical
+            ),
+            None,
+        )
+        if not_met:
+            return "unmet", _signal_note("Diagnosis is not established", not_met)
+
+    return None
+
+
 class ClinicalReviewEngine:
     """Rule-based clinical guideline review."""
 
@@ -180,8 +609,11 @@ class ClinicalReviewEngine:
             return self._no_guideline_result(case)
 
         guideline = match.guideline
-        support = self._support_text(case, document_text)
+        raw_support = self._support_text(case, document_text)
+        support = _remove_educational_text(raw_support)
         deficiency = self._deficiency_text(case, document_text)
+        support_signals = extract_clinical_signals(support)
+        deficiency_signals = extract_clinical_signals(deficiency)
 
         matched_criteria: list[str] = []
         missing_criteria: list[str] = []
@@ -190,13 +622,26 @@ class ClinicalReviewEngine:
         detail: list[CriterionEvaluation] = []
 
         for crit in guideline.required_criteria:
-            status, note = self._evaluate_criterion(crit, support, deficiency)
-            detail.append(
-                CriterionEvaluation(
-                    id=crit.id, description=crit.description, met=(status == "met"), note=note
-                )
+            status, note = self._evaluate_criterion(
+                crit,
+                support,
+                deficiency,
+                raw_support=raw_support,
+                support_signals=support_signals,
+                deficiency_signals=deficiency_signals,
             )
-            if status == "met":
+            evaluation = CriterionEvaluation(
+                id=crit.id,
+                description=crit.description,
+                met=(status == "met"),
+                note=note,
+            )
+            if evaluation.note and "context=negated" in evaluation.note.lower():
+                evaluation.met = False
+                status = "unmet"
+            detail.append(evaluation)
+
+            if evaluation.met:
                 matched_criteria.append(crit.description)
             elif status == "unmet":
                 missing_criteria.append(crit.description)
@@ -218,6 +663,11 @@ class ClinicalReviewEngine:
             )
             if hit:
                 contraindications_found.append(contra.description)
+        for clinical_contra in _medspacy_contraindications(
+            support_signals, deficiency_signals
+        ):
+            if clinical_contra not in contraindications_found:
+                contraindications_found.append(clinical_contra)
 
         recommendation, confidence = self._decide(
             n_met=len(matched_criteria),
@@ -260,9 +710,31 @@ class ClinicalReviewEngine:
     # ------------------------------------------------------------------ #
     @staticmethod
     def _evaluate_criterion(
-        crit: GuidelineCriterion, support: str, deficiency: str
+        crit: GuidelineCriterion,
+        support: str,
+        deficiency: str,
+        *,
+        raw_support: str | None = None,
+        support_signals: list[ClinicalSignal] | None = None,
+        deficiency_signals: list[ClinicalSignal] | None = None,
     ) -> tuple[str, str | None]:
         """Return (status, note) where status in {met, unmet, unknown}."""
+        marker = f"{crit.id} {crit.description}".lower()
+        if ("tb_screen" in marker or "tuberculosis" in marker) and _has_missing_tb_documentation(
+            raw_support or support
+        ):
+            return "unmet", "TB screening documentation is stated as missing or not received."
+        if ("diagnosis" in marker or "rheumatoid arthritis" in marker) and _has_noncovered_osteoarthritis_indication(
+            raw_support or support
+        ):
+            return "unmet", "Humira is stated as not indicated for the submitted Osteoarthritis diagnosis."
+
+        signal_status = _evaluate_with_medspacy(
+            crit, support_signals or [], deficiency_signals or []
+        )
+        if signal_status is not None:
+            return signal_status
+
         keywords = _expanded_keywords(crit)
         flagged = _contains_any(deficiency, keywords)
         supported = _contains_any(support, keywords, ignore_negated=True)

@@ -10,6 +10,7 @@ import streamlit as st
 from app.extraction.extractor import extract_text_from_bytes
 from app.models.case_document import DocumentCategory
 from app.models.conflict_report import ConflictSeverity
+from app.ui import session
 from app.ui.tabs.common import get_case_service, select_or_create_case
 
 
@@ -79,17 +80,14 @@ def render_document_assembly_tab() -> None:
     if service.list_documents(case_id):
         if st.button("Assemble case", type="primary", key="assembly_run"):
             ctx = service.assemble_case(case_id)
-            st.success(
-                f"Assembled {len(ctx.document_ids)} document(s): "
-                f"{len(ctx.evidence)} evidence references, "
-                f"{len(ctx.conflict_report.conflicts)} conflict(s)."
+            record = service.get_case(case_id)
+            patient_case = (
+                record.patient_case
+                if record and record.patient_case is not None
+                else ctx.patient_case
             )
-            with st.expander("Synthesized patient case", expanded=True):
-                st.json(ctx.patient_case.model_dump(mode="json"))
-            if ctx.missing_information:
-                st.warning("Missing information:")
-                for m in ctx.missing_information:
-                    st.markdown(f"- {m}")
+            session.refresh_assembled_case(case_id, patient_case)
+            st.rerun()
 
 
 # --------------------------------------------------------------------------- #

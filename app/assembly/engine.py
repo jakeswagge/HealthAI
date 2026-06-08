@@ -37,6 +37,9 @@ _SCALAR_FACTS = (
     "physician_name",
     "decision",
     "denial_reason",
+    "tb_screen_result",
+    "provider_role",
+    "step_therapy_status",
 )
 _LIST_FACTS = ("icd10_codes", "cpt_codes")
 
@@ -59,6 +62,9 @@ _CONFLICT_SEVERITY: dict[str, ConflictSeverity] = {
     "insurance_company": ConflictSeverity.MEDIUM,
     "physician_name": ConflictSeverity.LOW,
     "decision": ConflictSeverity.MEDIUM,
+    "tb_screen_result": ConflictSeverity.HIGH,
+    "provider_role": ConflictSeverity.MEDIUM,
+    "step_therapy_status": ConflictSeverity.HIGH,
 }
 
 # Document types considered more authoritative for a given fact.
@@ -189,6 +195,7 @@ class CaseAssemblyEngine:
                         description=(
                             f"Conflicting values for '{fact}' across documents: "
                             + "; ".join(self._display_values(fact, refs))
+                            + ". Human review is required before downstream reliance."
                         ),
                     )
                 )
@@ -204,6 +211,7 @@ class CaseAssemblyEngine:
 
         # 5. Synthesize a backward-compatible PatientCase with sources.
         patient_case = self._synthesize_case(case_id, resolved, by_fact)
+        self._apply_conflict_confidence(patient_case, conflicts)
 
         return UnifiedCaseContext(
             case_id=case_id,
@@ -327,6 +335,19 @@ class CaseAssemblyEngine:
             return (is_auth, ref.confidence_score)
 
         return max(refs, key=score)
+
+    @staticmethod
+    def _apply_conflict_confidence(
+        case: PatientCase,
+        conflicts: list[FactConflict],
+    ) -> None:
+        """Lower case confidence when unresolved conflicts remain."""
+        if not conflicts:
+            return
+        if any(c.severity is ConflictSeverity.HIGH for c in conflicts):
+            case.confidence_score = min(case.confidence_score, 0.65)
+        else:
+            case.confidence_score = min(case.confidence_score, 0.8)
 
     def _synthesize_case(
         self,

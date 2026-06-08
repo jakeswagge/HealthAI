@@ -38,11 +38,14 @@ def _review(doc: str):
         "specialist evaluation",
         "evaluated by specialist",
         "seen by specialist",
+        "seen by rheumatology",
+        "seen by rheumatologist",
         "under care of rheumatology",
         "referred to rheumatology",
         "board-certified rheumatologist",
         "consulting rheumatologist",
         "reviewed by rheumatology service",
+        "rheum",
     ],
 )
 def test_specialist_detects_requested_vocabulary(phrase):
@@ -159,4 +162,5 @@ def test_matched_phrase_links_to_source_evidence_reference():
     ]
     assert specialist_refs
     assert specialist_refs[0].source_filename == "rheumatology-note.txt"
-    assert specialist_refs[0].normalized_fact.endswith("evaluated by rheumatology")
+    assert specialist_refs[0].normalized_fact.endswith("rheumatology specialist")
+    assert "evaluated by rheumatology" in specialist_refs[0].quoted_text.lower()

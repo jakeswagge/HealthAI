@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from app.appeals.appeal_agent import AppealAgentError
 from app.ui.tabs.common import get_case_service
 
 
@@ -133,7 +134,13 @@ def render_appeal_explainability_tab() -> None:
         )
         return
 
-    governed = service.generate_governed_appeal(selected, settings)
+    try:
+        governed = service.generate_governed_appeal(selected, settings)
+    except AppealAgentError:
+        st.info(
+            "ℹ️ Appeal Explainability Unavailable: No active insurance denial exists for this case file. Explainability logs are only generated for formal payer denials."
+        )
+        return
     exp = governed.explanation
 
     c1, c2, c3 = st.columns(3)

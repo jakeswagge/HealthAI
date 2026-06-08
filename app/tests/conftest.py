@@ -14,6 +14,12 @@ SAMPLE_DOCS_DIR = PROJECT_ROOT / "data" / "sample_docs"
 PDF_SAMPLE_TEXT = "HealthAI prior authorization sample PDF.\nLine two of the PDF."
 
 
+@pytest.fixture(autouse=True)
+def _use_mock_ocr_for_tests(monkeypatch):
+    """Keep OCR-dependent tests deterministic without enabling mock in runtime."""
+    monkeypatch.setenv("HEALTHAI_OCR_PROVIDER", "mock")
+
+
 @pytest.fixture
 def txt_bytes() -> bytes:
     """Raw bytes for a simple UTF-8 text document."""

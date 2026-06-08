@@ -21,6 +21,10 @@ Both never fabricate text beyond what they actually read/decode.
 from __future__ import annotations
 
 import abc
+import os
+import shutil
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from app.models.ocr_result import OCRPageResult, ProcessingMethod
@@ -59,6 +63,17 @@ class OCRProvider(abc.ABC):
     ) -> list[OCRPageResult]:
         """OCR every page of a (scanned) PDF; returns one result per page."""
         raise NotImplementedError
+
+
+@dataclass(frozen=True)
+class OCRReadiness:
+    """Operational readiness for the active OCR provider."""
+
+    provider_name: str
+    description: str
+    is_available: bool
+    is_real_ocr: bool
+    message: str
 
 
 # --------------------------------------------------------------------------- #
@@ -140,6 +155,43 @@ class LocalTesseractOCRProvider(OCRProvider):
         self._checked: Optional[bool] = None
 
     # -- availability -------------------------------------------------- #
+    @staticmethod
+    def _candidate_tesseract_paths() -> list[str]:
+        env_cmd = os.getenv("TESSERACT_CMD", "").strip()
+        candidates = [env_cmd] if env_cmd else []
+
+        resolved = shutil.which("tesseract")
+        if resolved:
+            candidates.append(resolved)
+
+        local_app_data = Path(os.getenv("LOCALAPPDATA", ""))
+        candidates.extend(
+            str(path)
+            for path in (
+                Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
+                Path(r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"),
+                local_app_data / "Programs" / "Tesseract-OCR" / "tesseract.exe",
+            )
+            if str(path).strip()
+        )
+
+        seen: set[str] = set()
+        unique: list[str] = []
+        for candidate in candidates:
+            normalized = candidate.strip().strip('"')
+            if normalized and normalized.lower() not in seen:
+                seen.add(normalized.lower())
+                unique.append(normalized)
+        return unique
+
+    @classmethod
+    def _configure_pytesseract(cls, pytesseract) -> bool:
+        for candidate in cls._candidate_tesseract_paths():
+            if Path(candidate).exists():
+                pytesseract.pytesseract.tesseract_cmd = candidate
+                return True
+        return False
+
     def _probe(self) -> bool:
         try:
             import pytesseract  # noqa: F401
@@ -148,6 +200,7 @@ class LocalTesseractOCRProvider(OCRProvider):
             return False
         try:
             import pytesseract
+            self._configure_pytesseract(pytesseract)
             pytesseract.get_tesseract_version()
         except Exception:  # noqa: BLE001 - binary missing/misconfigured
             return False
@@ -233,23 +286,78 @@ class LocalTesseractOCRProvider(OCRProvider):
         ]
 
 
-def get_ocr_provider(prefer_real: bool = True) -> OCRProvider:
+def _mock_ocr_explicitly_enabled() -> bool:
+    provider = os.getenv("HEALTHAI_OCR_PROVIDER", "").strip().lower()
+    allow_mock = os.getenv("HEALTHAI_ALLOW_MOCK_OCR", "").strip().lower()
+    return provider == "mock" or allow_mock in {"1", "true", "yes", "on"}
+
+
+def get_ocr_provider(
+    prefer_real: bool = True,
+    *,
+    allow_mock: bool | None = None,
+) -> OCRProvider:
     """Return the best available OCR provider.
 
     If ``prefer_real`` and Tesseract is available, returns the Tesseract
-    provider; otherwise returns the deterministic mock provider so the workflow
-    never breaks when OCR dependencies are absent.
+    provider. Mock OCR is only returned when explicitly enabled via the
+    ``allow_mock`` argument or the ``HEALTHAI_OCR_PROVIDER=mock`` /
+    ``HEALTHAI_ALLOW_MOCK_OCR=1`` environment setting. This prevents the
+    runtime app from presenting test-fixture decoding as real scanned-document
+    OCR.
     """
+    if allow_mock is None:
+        allow_mock = _mock_ocr_explicitly_enabled()
+    if allow_mock:
+        return MockOCRProvider()
     if prefer_real:
         tess = LocalTesseractOCRProvider()
         if tess.is_available:
             return tess
-    return MockOCRProvider()
+        return tess
+    return LocalTesseractOCRProvider()
 
 
 def describe_ocr_provider(provider: OCRProvider | None = None) -> str:
     """Human-readable description of the active OCR provider."""
     provider = provider or get_ocr_provider()
     if isinstance(provider, LocalTesseractOCRProvider):
-        return "Local Tesseract OCR (offline)"
+        if provider.is_available:
+            return "Local Tesseract OCR (offline)"
+        return "Local Tesseract OCR unavailable"
     return "Mock OCR provider (deterministic; Tesseract not installed)"
+
+
+def ocr_readiness(provider: OCRProvider | None = None) -> OCRReadiness:
+    """Return explicit OCR readiness details for UI and diagnostics."""
+    provider = provider or get_ocr_provider()
+    description = describe_ocr_provider(provider)
+    if isinstance(provider, LocalTesseractOCRProvider):
+        if provider.is_available:
+            return OCRReadiness(
+                provider_name=provider.name,
+                description=description,
+                is_available=True,
+                is_real_ocr=True,
+                message="Real OCR is available for scanned PDFs and images.",
+            )
+        return OCRReadiness(
+            provider_name=provider.name,
+            description=description,
+            is_available=False,
+            is_real_ocr=True,
+            message=(
+                "Real OCR unavailable because Tesseract or its Python imaging "
+                "dependencies are not installed."
+            ),
+        )
+    return OCRReadiness(
+        provider_name=provider.name,
+        description=description,
+        is_available=provider.is_available,
+        is_real_ocr=False,
+        message=(
+            "Mock OCR is enabled for deterministic tests; it is not real "
+            "scanned-document OCR."
+        ),
+    )

@@ -27,9 +27,11 @@ from app.ocr.factory import get_ocr_engine, is_ocr_available
 from app.ocr.providers import (
     LocalTesseractOCRProvider,
     MockOCRProvider,
+    OCRReadiness,
     OCRProvider,
     describe_ocr_provider,
     get_ocr_provider,
+    ocr_readiness,
 )
 
 __all__ = [
@@ -42,8 +44,10 @@ __all__ = [
     "get_ocr_engine",
     "is_ocr_available",
     "OCRProvider",
+    "OCRReadiness",
     "LocalTesseractOCRProvider",
     "MockOCRProvider",
     "get_ocr_provider",
     "describe_ocr_provider",
+    "ocr_readiness",
 ]

@@ -48,6 +48,10 @@ class ConflictReport(BaseModel):
     def has_conflicts(self) -> bool:
         return len(self.conflicts) > 0
 
+    @property
+    def requires_human_review(self) -> bool:
+        return self.has_conflicts
+
     def by_severity(self, severity: ConflictSeverity) -> list[FactConflict]:
         return [c for c in self.conflicts if c.severity is severity]
 

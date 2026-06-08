@@ -20,8 +20,16 @@ from __future__ import annotations
 
 import re
 
-from app.models.case_document import CaseDocument
+from app.models.case_document import CaseDocument, DocumentCategory
 from app.models.evidence_reference import EvidenceReference
+from app.review.clinical_nlp import (
+    canonical_diagnosis,
+    extract_clinical_signals,
+    provider_role,
+    specialist_role,
+    step_therapy_status,
+    tb_result_polarity,
+)
 
 # Logical fact types the extractor knows how to find.
 FACT_TYPES: tuple[str, ...] = (
@@ -36,13 +44,16 @@ FACT_TYPES: tuple[str, ...] = (
     "denial_reason",
     "icd10_codes",
     "cpt_codes",
+    "tb_screen_result",
+    "provider_role",
+    "step_therapy_status",
 )
 
 _SEP = r"\s*[:.]+\s*"
 
 _FIELD_LABELS: dict[str, tuple[str, ...]] = {
     "patient_name": (r"member\s+name", r"patient\s+name", r"patient", r"member"),
-    "member_id": (r"member\s*id", r"member\s*#", r"subscriber\s*id", r"id\s*#"),
+    "member_id": (r"member\s*id", r"member\s*#", r"subscriber\s*id", r"id\s*#", r"id"),
     "date_of_birth": (r"date\s+of\s+birth", r"dob"),
     "diagnosis": (r"diagnosis", r"dx"),
     "requested_service": (
@@ -109,8 +120,11 @@ _CRITERION_PHRASES: tuple[tuple[str, tuple[str, ...]], ...] = (
             "referred to rheumatology",
             "consulting rheumatologist",
             "seen by specialist",
+            "seen by rheumatology",
+            "seen by rheumatologist",
             "rheumatologist",
             "rheumatology",
+            "rheum",
             "specialist",
             "gastroenterologist",
             "dermatologist",
@@ -158,7 +172,7 @@ _CRITERION_PHRASES: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 _NEGATION_BEFORE_RE = re.compile(
-    r"\b(no|not|without|absent|missing|lacks?|lack of|undocumented)\b"
+    r"\b(no|not|without|absent|missing|lacks?|lack of|undocumented|refused|declined)\b"
     r"(?:\W+\w+){0,5}\W*$",
     re.IGNORECASE,
 )
@@ -249,6 +263,24 @@ def _labeled_value(
     return (value, quote) if value else None
 
 
+def _primary_diagnosis_context(text: str) -> tuple[str | None, bool]:
+    """Return (canonical diagnosis, excluded) for recognized diagnosis context."""
+    diagnosis_signals = [
+        signal
+        for signal in extract_clinical_signals(text)
+        if signal.label.startswith("DIAGNOSIS_")
+    ]
+    for signal in diagnosis_signals:
+        canonical = canonical_diagnosis(signal)
+        if canonical:
+            return canonical, False
+    return None, bool(diagnosis_signals)
+
+
+def _clean_sentence(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def _section_label(line: str) -> str | None:
     """Return the label portion (before the colon) of a 'label: value' line."""
     m = re.match(r"\s*([A-Za-z0-9 /#()\-]+?)\s*[:.]", line)
@@ -308,6 +340,10 @@ class EvidenceExtractor:
                 if extracted is None:
                     continue
                 value, quoted_line = extracted
+                if fact_type == "member_id":
+                    m = re.match(r"[A-Za-z0-9][A-Za-z0-9_-]*", value)
+                    if m:
+                        value = m.group(0)
                 if fact_type == "diagnosis":
                     # Strip an embedded leading ICD-10 code from the value.
                     value = re.sub(
@@ -315,6 +351,11 @@ class EvidenceExtractor:
                         "",
                         value,
                     ).strip(" ()")
+                    canonical, excluded = _primary_diagnosis_context(quoted_line)
+                    if excluded:
+                        continue
+                    if canonical:
+                        value = canonical
                 if fact_type == "physician_name":
                     value = re.split(r"\bNPI\b", value, flags=re.IGNORECASE)[0].strip()
                 if fact_type in {"requested_service", "insurance_company"}:
@@ -376,11 +417,165 @@ class EvidenceExtractor:
                 )
                 seen_criteria.add(fact_type)
 
+        clinical_refs = self._extract_clinical_signal_refs(
+            document,
+            page_number,
+            page_text,
+        )
+        if clinical_refs:
+            clinical_fact_types = {r.fact_type for r in clinical_refs}
+            if "criterion_specialist" in clinical_fact_types:
+                refs = [
+                    r
+                    for r in refs
+                    if r.fact_type != "criterion_specialist"
+                ]
+            if "tb_screen_result" in clinical_fact_types:
+                refs = [
+                    r
+                    for r in refs
+                    if r.fact_type != "criterion_tb_screen"
+                ]
+            if "step_therapy_status" in clinical_fact_types:
+                refs = [
+                    r
+                    for r in refs
+                    if r.fact_type != "criterion_step_therapy"
+                ]
+            refs.extend(clinical_refs)
+
         return refs
 
     # ------------------------------------------------------------------ #
     # Small helpers
     # ------------------------------------------------------------------ #
+    def _extract_clinical_signal_refs(
+        self,
+        document: CaseDocument,
+        page_number: int,
+        page_text: str,
+    ) -> list[EvidenceReference]:
+        refs: list[EvidenceReference] = []
+        seen: set[tuple[str, str, str]] = set()
+
+        for signal in extract_clinical_signals(page_text):
+            quote = _clean_sentence(signal.sentence)
+            if not quote:
+                continue
+
+            diagnosis = canonical_diagnosis(signal)
+            if diagnosis:
+                key = ("diagnosis", diagnosis, quote)
+                if key not in seen:
+                    seen.add(key)
+                    refs.append(
+                        self._make_ref(
+                            document,
+                            page_number,
+                            "diagnosis",
+                            diagnosis,
+                            quote,
+                            0.85,
+                        )
+                    )
+
+            role = provider_role(signal)
+            if role:
+                key = ("provider_role", role, quote)
+                if key not in seen:
+                    seen.add(key)
+                    refs.append(
+                        self._make_ref(
+                            document,
+                            page_number,
+                            "provider_role",
+                            role,
+                            quote,
+                            0.85,
+                        )
+                    )
+
+            role = specialist_role(signal)
+            if role:
+                key = ("criterion_specialist", role, quote)
+                if key not in seen:
+                    seen.add(key)
+                    refs.append(
+                        self._make_ref(
+                            document,
+                            page_number,
+                            "criterion_specialist",
+                            role,
+                            quote,
+                            0.85,
+                        )
+                    )
+
+            if document.document_type is not DocumentCategory.DENIAL_LETTER:
+                status = step_therapy_status(signal)
+                if status in {"failed", "refused", "absent"}:
+                    key = ("step_therapy_status", status, quote)
+                    if key not in seen:
+                        seen.add(key)
+                        refs.append(
+                            self._make_ref(
+                                document,
+                                page_number,
+                                "step_therapy_status",
+                                status,
+                                quote,
+                                0.85,
+                            )
+                        )
+                    if status == "failed":
+                        criterion_value = "methotrexate failure"
+                        key = ("criterion_step_therapy", criterion_value, quote)
+                        if key not in seen:
+                            seen.add(key)
+                            refs.append(
+                                self._make_ref(
+                                    document,
+                                    page_number,
+                                    "criterion_step_therapy",
+                                    criterion_value,
+                                    quote,
+                                    0.85,
+                                )
+                            )
+
+            polarity = tb_result_polarity(signal)
+            if polarity in {"positive", "negative"}:
+                key = ("tb_screen_result", polarity, quote)
+                if key not in seen:
+                    seen.add(key)
+                    refs.append(
+                        self._make_ref(
+                            document,
+                            page_number,
+                            "tb_screen_result",
+                            polarity,
+                            quote,
+                            0.9,
+                        )
+                    )
+                if polarity == "negative":
+                    criterion_value = "negative TB result"
+                    key = ("criterion_tb_screen", criterion_value, quote)
+                    if key not in seen:
+                        seen.add(key)
+                        refs.append(
+                            self._make_ref(
+                                document,
+                                page_number,
+                                "criterion_tb_screen",
+                                criterion_value,
+                                quote,
+                                0.85,
+                            )
+                        )
+
+        return refs
+
     @staticmethod
     def _unique(items: list[str]) -> list[str]:
         seen: set[str] = set()

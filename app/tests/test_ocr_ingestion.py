@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import types
 import zipfile
 
 import pytest
@@ -19,6 +20,7 @@ from app.ocr.providers import (
     LocalTesseractOCRProvider,
     MockOCRProvider,
     get_ocr_provider,
+    ocr_readiness,
 )
 from app.vision.extractor import VisionEvidenceExtractor
 from app.storage.database import connect, initialize_schema
@@ -105,16 +107,38 @@ class TestOCRProviders:
         page = p.ocr_image(_png_pdf_bytes("x"), document_id="DOC1")[0]
         assert page.is_low_confidence(0.6) is True
 
-    def test_get_provider_falls_back_to_mock(self):
-        # Tesseract is not installed in this environment.
+    def test_get_provider_uses_mock_only_when_enabled(self, monkeypatch):
+        monkeypatch.delenv("HEALTHAI_OCR_PROVIDER", raising=False)
+        monkeypatch.delenv("HEALTHAI_ALLOW_MOCK_OCR", raising=False)
         provider = get_ocr_provider()
-        assert provider.is_available is True
+        assert not isinstance(provider, MockOCRProvider)
+
+        mock = get_ocr_provider(allow_mock=True)
+        assert isinstance(mock, MockOCRProvider)
+        assert mock.is_available is True
+
+    def test_readiness_marks_mock_as_not_real_ocr(self):
+        readiness = ocr_readiness(MockOCRProvider())
+        assert readiness.is_available is True
+        assert readiness.is_real_ocr is False
+        assert "not real" in readiness.message.lower()
 
     def test_tesseract_unavailable_raises_not_available(self):
         tess = LocalTesseractOCRProvider()
         if not tess.is_available:
             with pytest.raises(OCRNotAvailableError):
                 tess.ocr_image(b"\x89PNG", document_id="DOC1")
+
+    def test_configure_pytesseract_uses_explicit_cmd(self, monkeypatch, tmp_path):
+        exe = tmp_path / "tesseract.exe"
+        exe.write_text("", encoding="utf-8")
+        monkeypatch.setenv("TESSERACT_CMD", str(exe))
+
+        fake = types.SimpleNamespace(
+            pytesseract=types.SimpleNamespace(tesseract_cmd="tesseract")
+        )
+        assert LocalTesseractOCRProvider._configure_pytesseract(fake) is True
+        assert fake.pytesseract.tesseract_cmd == str(exe)
 
 
 # --------------------------------------------------------------------------- #
@@ -296,6 +320,44 @@ class TestServiceIngestion:
         # detect_kind sees no text layer (bytes are not a real PDF) -> SCANNED.
         assert res.ocr_used is True
         assert service.ocr_results.count_for_case(rec.case_id) == res.page_count
+
+    def test_document_status_explains_txt_skips_ocr(self, service):
+        rec = service.create_case("txt")
+        service.ingest_document(rec.case_id, "note.txt", DENIAL_TEXT.encode())
+
+        status = service.document_ocr_statuses(rec.case_id)[0]
+        assert status.status == "TXT files do not use OCR"
+        assert status.processing_method == "TEXT"
+        assert status.ocr_pages == 0
+
+    def test_document_status_explains_searchable_pdf_text_layer(self, service):
+        import fitz
+
+        rec = service.create_case("pdf")
+        pdf = fitz.open()
+        page = pdf.new_page()
+        page.insert_text((72, 72), "Diagnosis: Rheumatoid arthritis")
+        data = pdf.tobytes()
+        pdf.close()
+
+        service.ingest_document(rec.case_id, "searchable.pdf", data)
+        status = service.document_ocr_statuses(rec.case_id)[0]
+        assert status.status == "Text layer used"
+        assert status.processing_method == "TEXT_LAYER"
+        assert status.ocr_pages == 0
+
+    def test_document_status_explains_unavailable_real_ocr(self, service):
+        tess = LocalTesseractOCRProvider()
+        tess._checked = False
+        service.ingestion.ocr = tess
+
+        rec = service.create_case("scan")
+        service.ingest_document(rec.case_id, "scan.png", b"image bytes")
+
+        status = service.document_ocr_statuses(rec.case_id)[0]
+        assert status.status == "OCR unavailable"
+        assert "Tesseract" in status.detail
+        assert status.ocr_pages == 0
 
 
 # --------------------------------------------------------------------------- #
