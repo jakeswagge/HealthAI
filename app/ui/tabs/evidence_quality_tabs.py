@@ -18,7 +18,8 @@ def render_evidence_quality_tab() -> None:
     st.caption(
         "Score the quality of extracted evidence (completeness, relevance, "
         "consistency, traceability) and surface weak or conflicting evidence. "
-        "Optionally re-extract evidence with Claude (anti-fabrication gated)."
+        "Optionally re-extract evidence with the configured AI backend "
+        "(anti-fabrication gated)."
     )
 
     service = get_case_service()

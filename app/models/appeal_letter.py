@@ -21,6 +21,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, computed_field, field_validator
 
+from app.models.safety import AppealVerificationResult
+
 
 def _utc_now_iso() -> str:
     """Return the current UTC time as an ISO-8601 string."""
@@ -113,6 +115,24 @@ class AppealLetter(BaseModel):
     citations: list[str] = Field(
         default_factory=list,
         description="Human-readable source citations (e.g. '(clinical_note.pdf, p.4)').",
+    )
+    verification: AppealVerificationResult = Field(
+        default_factory=AppealVerificationResult,
+        description="Quote/evidence verification result for generated appeal claims.",
+    )
+    drafted_by_ai: bool = Field(
+        default=False,
+        description="Whether a real AI backend drafted the appeal narrative.",
+    )
+    draft_backend: Optional[str] = Field(
+        default=None, description="Backend that drafted the appeal narrative."
+    )
+    draft_model: Optional[str] = Field(
+        default=None, description="Model/backend identifier used for appeal drafting."
+    )
+    safety_gate: dict = Field(
+        default_factory=dict,
+        description="Latest safety-gate outcome for this appeal.",
     )
 
     # ------------------------------------------------------------------ #

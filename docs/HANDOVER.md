@@ -12,8 +12,8 @@ HealthAI is a **local, Python prior-authorization document intelligence**
 platform. It ingests healthcare documents, extracts structured facts with full
 source traceability, reviews requests against clinical guidelines, and drafts
 appeal letters - always keeping a human reviewer in authority and recording an
-audit trail. It runs fully offline by default and upgrades to Claude when an API
-key is present.
+audit trail. It runs fully offline by default and upgrades to Claude or Gemini
+when a hosted LLM backend is configured.
 
 ---
 
@@ -186,8 +186,12 @@ Expect **402 passed**.
 
 ### LLM backend
 - Default: offline `LocalHeuristicClient` (no key needed).
-- Claude: set `ANTHROPIC_API_KEY` (and `pip install anthropic`); or force with
-  `HEALTHAI_LLM_BACKEND=anthropic|local`.
+- Claude: set `ANTHROPIC_API_KEY` (and `pip install anthropic`); force with
+  `HEALTHAI_LLM_BACKEND=anthropic`.
+- Gemini: set `GEMINI_API_KEY` or `GOOGLE_API_KEY` (and `pip install
+  google-genai`); force with `HEALTHAI_LLM_BACKEND=gemini`.
+- Local deterministic: use no hosted key, or force with
+  `HEALTHAI_LLM_BACKEND=local`.
 
 ---
 

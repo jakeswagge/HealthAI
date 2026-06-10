@@ -33,8 +33,8 @@ setting:
 
 ### Current project status
 Feature-complete for the current phase. The platform runs entirely offline by
-default (deterministic local backends) and transparently upgrades to Claude when
-an API key is configured. It spans 13 milestones plus a Final Milestone:
+default (deterministic local backends) and transparently upgrades to a hosted
+LLM backend when configured. It spans 13 milestones plus a Final Milestone:
 case management, OCR-aware ingestion, evidence extraction and quality scoring,
 multi-document assembly with conflict detection, human conflict resolution,
 governance-enforced reviews and appeals, explainability, payer-specific

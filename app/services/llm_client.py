@@ -1,8 +1,9 @@
 """Abstract LLM client interface used by agents.
 
-Agents depend on this interface only. Concrete backends (Anthropic Claude, a
-local heuristic fallback, or any future provider) implement it. This is the
-single seam where AI is isolated from the rest of the application.
+Agents depend on this interface only. Concrete backends (Anthropic Claude,
+Google Gemini, a local heuristic fallback, or any future provider) implement
+it. This is the single seam where AI is isolated from the rest of the
+application.
 """
 
 from __future__ import annotations

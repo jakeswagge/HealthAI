@@ -52,6 +52,21 @@ VALID_REVIEW = json.dumps(
     }
 )
 
+AI_SELECTED_REVIEW = json.dumps(
+    {
+        "guideline_id": "GL-HUMIRA-001",
+        "service_name": "Humira (adalimumab)",
+        "recommendation": "DENY",
+        "matched_criteria": ["Diagnosis confirmed"],
+        "missing_criteria": ["Step therapy with a conventional DMARD"],
+        "missing_evidence": ["Records of methotrexate trial and failure"],
+        "recommended_actions": ["Submit step therapy documentation"],
+        "contraindications_found": [],
+        "rationale": "The supplied local Humira guideline applies.",
+        "confidence_score": 0.82,
+    }
+)
+
 HUMIRA_DENIAL_CASE = PatientCase(
     diagnosis="Rheumatoid arthritis",
     requested_service="Humira (adalimumab)",
@@ -78,6 +93,9 @@ class TestAIBackend:
         assert out.attempts == 1
         assert out.result.recommendation is Recommendation.DENY
         assert out.result.guideline_id == "GL-HUMIRA-001"
+        assert out.result.generated_by_ai is True
+        assert out.result.review_backend == "scripted-ai"
+        assert out.result.review_model == "scripted-ai-model"
 
     def test_retry_then_success(self):
         client = ScriptedAIClient(["not json", VALID_REVIEW])
@@ -109,3 +127,19 @@ class TestNoGuideline:
         out = agent.review(PatientCase(requested_service="dental cleaning"))
         assert out.guideline_id is None
         assert out.result.recommendation is Recommendation.INSUFFICIENT_INFORMATION
+
+    def test_ai_can_select_supplied_guideline_when_rule_match_misses(self):
+        case = PatientCase(
+            diagnosis="Rheumatoid arthritis",
+            requested_service="anti-TNF biologic",
+            decision=Decision.DENIED,
+            denial_reason="Step therapy not met: no methotrexate trial.",
+        )
+        agent = GuidelineReviewAgent(llm_client=ScriptedAIClient([AI_SELECTED_REVIEW]))
+
+        out = agent.review(case, document_text="The requested medication is Humira.")
+
+        assert out.used_ai is True
+        assert out.guideline_id == "GL-HUMIRA-001"
+        assert out.result.guideline_id == "GL-HUMIRA-001"
+        assert out.result.generated_by_ai is True

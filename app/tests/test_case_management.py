@@ -27,6 +27,7 @@ from app.models.case_record import (
 )
 from app.models.patient_case import Decision, PatientCase
 from app.models.review_result import Recommendation, ReviewResult
+from app.models.safety import AppealVerificationResult, AppealVerificationStatus
 from app.storage.database import connect, initialize_schema
 
 
@@ -70,6 +71,9 @@ def _sample_review() -> ReviewResult:
         confidence_score=0.85,
         guideline_id="GL-HUMIRA-001",
         service_name="Humira (adalimumab)",
+        generated_by_ai=True,
+        review_backend="gemini",
+        review_model="gemini-test",
         missing_evidence=["DMARD trial records"],
         recommended_actions=["Submit DMARD documentation"],
     )
@@ -85,7 +89,11 @@ def _sample_appeal() -> AppealLetter:
         original_decision="denied",
         appeal_reason="Challenge step therapy.",
         letter_text="# Appeal\n\n## Patient Information\n...\n## Signature\n",
-        confidence_score=0.7,
+        confidence_score=0.9,
+        verification=AppealVerificationResult(
+            status=AppealVerificationStatus.PASSED,
+            cited_evidence_ids=["EV-1"],
+        ),
     )
 
 
@@ -124,6 +132,9 @@ class TestCaseRepository:
         repo.create(record)
         loaded = repo.get(record.case_id)
         assert loaded.review_result.recommendation is Recommendation.DENY
+        assert loaded.review_result.generated_by_ai is True
+        assert loaded.review_result.review_backend == "gemini"
+        assert loaded.review_result.review_model == "gemini-test"
         assert loaded.appeal_letter.appeal_id == "APL-TEST123"
 
     def test_by_status_and_all(self, conn):
@@ -201,7 +212,7 @@ class TestCaseLifecycle:
         assert service.get_case(record.case_id).status is CaseStatus.EXTRACTED
 
         service.attach_review(record.case_id, _sample_review())
-        assert service.get_case(record.case_id).status is CaseStatus.REVIEWED
+        assert service.get_case(record.case_id).status is CaseStatus.PENDING_HUMAN_REVIEW
 
         service.attach_appeal(record.case_id, _sample_appeal())
         # Appeal generation auto-enters the human review queue.
@@ -320,6 +331,8 @@ class TestExport:
             "review_result.json",
             "appeal_letter.md",
             "audit_log.json",
+            "appeal_verification.json",
+            "safety_gates.json",
         }
         # JSON files parse.
         json.loads(files["patient_case.json"])
@@ -340,6 +353,8 @@ class TestExport:
             "review_result.json",
             "appeal_letter.md",
             "audit_log.json",
+            "appeal_verification.json",
+            "safety_gates.json",
         }
 
     def test_export_handles_missing_artifacts(self, service):

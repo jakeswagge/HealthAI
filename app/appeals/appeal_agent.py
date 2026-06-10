@@ -116,6 +116,7 @@ class AppealGenerationAgent:
             or not case.requested_service
         ):
             appeal = self.builder.build(case, review, resolved_guideline)
+            self._stamp_draft_metadata(appeal, used_ai=False, model=self.backend_name)
             return AppealAgentResult(
                 appeal=appeal,
                 attempts=0,
@@ -129,6 +130,7 @@ class AppealGenerationAgent:
             and review.missing_criteria
         ):
             appeal = self.builder.build(case, review, resolved_guideline)
+            self._stamp_draft_metadata(appeal, used_ai=False, model=self.backend_name)
             return AppealAgentResult(
                 appeal=appeal,
                 attempts=0,
@@ -140,6 +142,7 @@ class AppealGenerationAgent:
         # Offline / non-AI backend: deterministic builder.
         if not getattr(self.llm, "is_ai", False):
             appeal = self.builder.build(case, review, resolved_guideline)
+            self._stamp_draft_metadata(appeal, used_ai=False, model=self.backend_name)
             return AppealAgentResult(
                 appeal=appeal,
                 attempts=0,
@@ -164,6 +167,11 @@ class AppealGenerationAgent:
                 last_raw = response.text
                 data = _extract_json_object(response.text)
                 appeal = self._assemble_from_model(data, case, review, resolved_guideline)
+                self._stamp_draft_metadata(
+                    appeal,
+                    used_ai=True,
+                    model=response.model,
+                )
 
                 return AppealAgentResult(
                     appeal=appeal,
@@ -196,6 +204,7 @@ class AppealGenerationAgent:
             except LLMError as exc:
                 errors.append(f"Attempt {attempt}: LLMError: {exc}")
                 appeal = self.builder.build(case, review, resolved_guideline)
+                self._stamp_draft_metadata(appeal, used_ai=False, model=self.backend_name)
                 return AppealAgentResult(
                     appeal=appeal,
                     attempts=attempt,
@@ -207,6 +216,7 @@ class AppealGenerationAgent:
 
         # Exhausted retries: fall back to the deterministic builder.
         appeal = self.builder.build(case, review, resolved_guideline)
+        self._stamp_draft_metadata(appeal, used_ai=False, model=self.backend_name)
         return AppealAgentResult(
             appeal=appeal,
             attempts=self.max_retries,
@@ -280,3 +290,14 @@ class AppealGenerationAgent:
             candidate.confidence_score = 0.6
 
         return candidate
+
+    def _stamp_draft_metadata(
+        self,
+        appeal: AppealLetter,
+        *,
+        used_ai: bool,
+        model: str,
+    ) -> None:
+        appeal.drafted_by_ai = used_ai
+        appeal.draft_backend = self.backend_name
+        appeal.draft_model = model

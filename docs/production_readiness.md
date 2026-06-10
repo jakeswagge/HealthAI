@@ -14,8 +14,9 @@ any external use.
 
 | Concern | Setting | Notes |
 | --- | --- | --- |
-| LLM backend | `HEALTHAI_LLM_BACKEND` = `anthropic` \| `local` | Auto-detects: uses Claude when `ANTHROPIC_API_KEY` is set and the SDK imports, otherwise the offline deterministic backend. |
+| LLM backend | `HEALTHAI_LLM_BACKEND` = `anthropic` \| `gemini` \| `local` | Auto-detects: Anthropic when `ANTHROPIC_API_KEY` is set, then Gemini when `GEMINI_API_KEY` / `GOOGLE_API_KEY` is set, otherwise the offline deterministic backend. |
 | Claude credentials | `ANTHROPIC_API_KEY` | Never commit. Inject via environment / secrets manager. |
+| Gemini credentials | `GEMINI_API_KEY` / `GOOGLE_API_KEY` | Never commit. Inject via environment / secrets manager. |
 | Database path | `app.storage.database.DEFAULT_DB_PATH` (default `data/healthai.db`) | Pass an explicit `db_path`/`conn` to `CaseService` to relocate. |
 | Guideline packs | `data/guideline_packs/<PACK>/*.json` | Overlay files override base `data/guidelines/` by `guideline_id`. |
 | Payer profiles | `data/payers/*.json` | A built-in `DEFAULT` profile always exists. |
@@ -53,9 +54,9 @@ configure; the app runs as a local Streamlit process.
   built-in authentication, authorization, or network transport security.
 - If exposed beyond localhost, it MUST be placed behind an authenticating
   reverse proxy / VPN; the app does not authenticate users itself.
-- Secrets (e.g. `ANTHROPIC_API_KEY`) are read from the environment and must be
-  managed by the host's secrets mechanism. Secrets are never written to the
-  database or exports.
+- Secrets (e.g. `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`) are read from the
+  environment and must be managed by the host's secrets mechanism. Secrets are
+  never written to the database or exports.
 - Uploaded documents and extracted text are stored locally in SQLite without
   encryption at rest; rely on host disk encryption for confidentiality.
 - External content (LLM outputs, fetched/parsed documents) is treated as
@@ -64,10 +65,11 @@ configure; the app runs as a local Streamlit process.
 ## 5. PHI handling assumptions
 
 - Documents processed are expected to contain PHI. All processing is local; no
-  PHI leaves the host EXCEPT the text sent to Anthropic when the Claude backend
-  is explicitly enabled. With the local backend, no data leaves the machine.
-- Operators enabling the Claude backend are responsible for a BAA and for
-  confirming their Anthropic configuration meets their compliance obligations.
+  PHI leaves the host EXCEPT the text sent to the explicitly enabled hosted LLM
+  backend. With the local backend, no data leaves the machine.
+- Operators enabling Claude or Gemini are responsible for a BAA / applicable
+  data-processing agreement and for confirming their provider configuration
+  meets their compliance obligations.
 - Sample/validation data is synthetic; no real PHI is bundled.
 - Exports may contain PHI; treat export ZIPs as sensitive and store/transmit
   them accordingly.
@@ -105,7 +107,8 @@ configure; the app runs as a local Streamlit process.
 - [ ] `python -m validation.run` exits 0 (all scenarios pass).
 - [ ] Operational Health report shows no unexpected failures for a smoke case.
 - [ ] Governance mode configured intentionally (draft vs validated).
-- [ ] Backend confirmed (local vs Claude) and credentials/BAA in place if Claude.
+- [ ] Backend confirmed (local vs hosted LLM) and credentials/provider
+      agreement in place if a hosted backend is enabled.
 - [ ] Database file location and backup procedure confirmed.
 - [ ] Access controls (reverse proxy / network isolation) in place if non-local.
 - [ ] Payer profiles and guideline packs reviewed for the target deployment.

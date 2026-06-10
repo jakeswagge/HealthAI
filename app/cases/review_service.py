@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from app.audit.repository import AuditRepository
 from app.cases.lifecycle import CaseLifecycle
+from app.governance.safety import SafetyGate
 from app.models.audit_event import AuditActor, AuditEventType
 from app.models.case_record import (
     CaseRecord,
@@ -20,6 +21,7 @@ from app.models.case_record import (
     HumanDecision,
     HumanReviewDecision,
 )
+from app.models.governance import GovernanceSettings
 from app.models.patient_case import PatientCase
 from app.models.review_result import ReviewResult
 
@@ -27,22 +29,36 @@ from app.models.review_result import ReviewResult
 class ReviewService:
     """Attach extraction/review artifacts and run the human-review workflow."""
 
-    def __init__(self, lifecycle: CaseLifecycle, audit: AuditRepository) -> None:
+    def __init__(
+        self,
+        lifecycle: CaseLifecycle,
+        audit: AuditRepository,
+        settings_provider=None,
+    ) -> None:
         self.lifecycle = lifecycle
         self.audit = audit
+        self.settings_provider = settings_provider
+
+    def _settings(self) -> GovernanceSettings:
+        if self.settings_provider is None:
+            return GovernanceSettings()
+        return self.settings_provider()
 
     def attach_extraction(
         self, case_id: str, patient_case: PatientCase
     ) -> CaseRecord:
         """Attach extraction output and move to EXTRACTED."""
         record = self.lifecycle.require(case_id)
+        gate = SafetyGate(self._settings()).extraction(patient_case)
+        patient_case.safety_gate = gate.model_dump(mode="json")
         record.patient_case = patient_case
         self.lifecycle.set_status(record, CaseStatus.EXTRACTED)
         self.audit.log(
             case_id,
             AuditEventType.EXTRACTION_COMPLETED,
             details=(
-                f"Extracted case (confidence {patient_case.confidence_score:.2f})."
+                f"Extracted case (confidence {patient_case.confidence_score:.2f}; "
+                f"safety={gate.status.value})."
             ),
         )
         return self.lifecycle.save(record)
@@ -50,13 +66,28 @@ class ReviewService:
     def attach_review(self, case_id: str, review: ReviewResult) -> CaseRecord:
         """Attach review output and move to REVIEWED."""
         record = self.lifecycle.require(case_id)
+        gate = SafetyGate(self._settings()).review(review)
+        review.safety_gate = gate.model_dump(mode="json")
         record.review_result = review
-        self.lifecycle.set_status(record, CaseStatus.REVIEWED)
+        if record.status is not CaseStatus.PENDING_HUMAN_REVIEW:
+            self.lifecycle.set_status(record, CaseStatus.REVIEWED)
         self.audit.log(
             case_id,
             AuditEventType.REVIEW_COMPLETED,
-            details=f"Review completed: {review.recommendation.value}.",
+            details=(
+                f"Review completed: {review.recommendation.value}; "
+                f"safety={gate.status.value}."
+            ),
         )
+        if gate.requires_human_review:
+            if record.status is CaseStatus.REVIEWED:
+                self.lifecycle.set_status(
+                    record,
+                    CaseStatus.APPEAL_GENERATED,
+                    log_details="Safety gate routed review to human-review queue.",
+                )
+            if record.status is CaseStatus.APPEAL_GENERATED:
+                self.lifecycle.set_status(record, CaseStatus.PENDING_HUMAN_REVIEW)
         return self.lifecycle.save(record)
 
     def assign_reviewer(self, case_id: str, reviewer_name: str) -> CaseRecord:
@@ -79,6 +110,8 @@ class ReviewService:
         comments: str = "",
     ) -> CaseRecord:
         """Record a human-review decision and update status accordingly."""
+        if not comments or not comments.strip():
+            raise ValueError("Reviewer comments are required for human review.")
         record = self.lifecycle.require(case_id)
         review_decision = HumanReviewDecision(
             reviewer_name=reviewer_name,

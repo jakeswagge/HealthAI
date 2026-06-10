@@ -6,8 +6,9 @@
 # Compatibility notes:
 # - pymupdf and pydantic-core are compiled wheels; verify a wheel exists for
 #   your Python/OS before upgrading the interpreter.
-# - The anthropic SDK is OPTIONAL: the app runs fully offline (local + mock
-#   backends) without it. Install it + set ANTHROPIC_API_KEY to use real Claude.
+# - The external LLM SDKs are OPTIONAL at runtime: the app runs fully offline
+#   (local + mock backends) without credentials. Install/configure keys only to
+#   use real hosted AI backends.
 
 # --- Milestone 1: document extraction + UI ---
 streamlit>=1.40.0
@@ -20,8 +21,9 @@ spacy>=3.8.0
 medspacy>=1.3.1
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
 
-# --- Milestone 2: AI medical extraction (optional real-Claude backend) ---
+# --- Milestone 2: AI medical extraction (optional hosted LLM backends) ---
 anthropic>=0.39.0
+google-genai>=2.8.0
 
 # --- Milestone 9: OCR (OPTIONAL) ---
 # Real OCR of scanned PDFs / images needs the tesseract binary plus these

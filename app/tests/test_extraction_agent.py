@@ -12,6 +12,8 @@ from app.agents.medical_extraction_agent import (
     _extract_json_object,
 )
 from app.models.patient_case import Decision, PatientCase
+from app.models.review_result import Recommendation
+from app.review.engine import ClinicalReviewEngine
 from app.services.llm_client import LLMClient, LLMError, LLMResponse
 
 
@@ -67,6 +69,23 @@ VALID_JSON = json.dumps(
     }
 )
 
+MISSPELLED_HUMIRA_JSON = json.dumps(
+    {
+        "patient_name": "Rachel Green",
+        "member_id": "MES013",
+        "date_of_birth": "05-May-1979",
+        "diagnosis": "Rheumatiod Artharitis",
+        "icd10_codes": [],
+        "requested_service": "Humeria",
+        "cpt_codes": [],
+        "insurance_company": None,
+        "decision": "unknown",
+        "denial_reason": None,
+        "physician_name": "Dr. Geller",
+        "confidence_score": 0.95,
+    }
+)
+
 
 class TestJsonObjectExtraction:
     def test_plain_json(self):
@@ -94,6 +113,27 @@ class TestAgentHappyPath:
         assert result.attempts == 1
         assert result.repaired is False
         assert result.case.confidence_score == 0.9
+
+    def test_normalizes_known_clinical_typos_after_validation(self):
+        agent = MedicalExtractionAgent(ScriptedClient([MISSPELLED_HUMIRA_JSON]))
+        document_text = (
+            "Patnt Name: Rachel Green\n"
+            "DO B: 05-May-1979\n"
+            "Memb# MES013\n"
+            "Diaganosis: Rheumatiod Artharitis\n"
+            "Drug: Humeria\n"
+            "Notes: Methatrexat faild aftr 1 yr. Quant-TB gold neg. "
+            "Dr. Geller (Rheumatolgy) apprvs."
+        )
+        result = agent.extract(document_text)
+
+        assert result.case.patient_name == "Rachel Green"
+        assert result.case.diagnosis == "Rheumatoid Arthritis"
+        assert result.case.requested_service == "Humira"
+        assert result.case.confidence_score == 0.95
+        review = ClinicalReviewEngine().review(result.case, document_text)
+        assert review.guideline_id == "GL-HUMIRA-001"
+        assert review.recommendation is Recommendation.APPROVE
 
 
 class TestAgentRetry:

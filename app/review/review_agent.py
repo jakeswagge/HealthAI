@@ -30,7 +30,11 @@ from app.guidelines.repository import (
 from app.models.patient_case import PatientCase
 from app.models.review_result import Recommendation, ReviewResult
 from app.review.engine import ClinicalReviewEngine
-from app.review.review_prompts import REVIEW_SYSTEM_PROMPT, build_review_messages
+from app.review.review_prompts import (
+    REVIEW_SYSTEM_PROMPT,
+    build_review_messages,
+    build_review_selection_messages,
+)
 from app.services.factory import get_llm_client
 from app.services.json_utils import extract_json_object as _extract_json_object
 from app.services.llm_client import LLMClient, LLMError
@@ -67,7 +71,7 @@ class GuidelineReviewAgent:
         llm_client: LLMClient | None = None,
         repository: GuidelineRepository | None = None,
         max_retries: int = 3,
-        max_tokens: int = 1200,
+        max_tokens: int = 3000,
     ) -> None:
         self.llm = llm_client or get_llm_client()
         self.repository = repository or get_default_repository()
@@ -86,16 +90,43 @@ class GuidelineReviewAgent:
     ) -> ReviewAgentResult:
         """Produce a validated ReviewResult for a case."""
         match = self.repository.match(case)
+        backend = self.backend_name
+        model = getattr(self.llm, "model", backend)
+        retrieved_guidelines = self.repository.retrieve(case)
 
         # No applicable guideline: defer to the deterministic engine's
-        # well-formed "insufficient information" result.
+        # well-formed result unless a real AI backend can select from the local
+        # guideline library.
         if match is None:
+            if getattr(self.llm, "is_ai", False):
+                guidelines = self.repository.all()
+                if guidelines:
+                    messages = build_review_selection_messages(
+                        case, guidelines, document_text
+                    )
+                    ai_result = self._run_ai_review(
+                        messages=messages,
+                        guideline=None,
+                        retrieved_guidelines=retrieved_guidelines,
+                    )
+                    if ai_result is not None:
+                        return ai_result
+
             result = self.engine.review(case, document_text)
+            self._stamp_review_metadata(
+                result,
+                used_ai=False,
+                backend=backend,
+                model=model,
+            )
+            result.evidence_refs["retrieved_guidelines"] = [
+                item["guideline_id"] for item in retrieved_guidelines
+            ]
             return ReviewAgentResult(
                 result=result,
                 attempts=0,
-                backend=self.backend_name,
-                model=getattr(self.llm, "model", self.backend_name),
+                backend=backend,
+                model=model,
                 used_ai=False,
                 guideline_id=None,
             )
@@ -108,6 +139,15 @@ class GuidelineReviewAgent:
             result = self.engine.review(case, document_text)
             result.guideline_id = guideline.guideline_id
             result.service_name = guideline.service_name
+            self._stamp_review_metadata(
+                result,
+                used_ai=False,
+                backend=backend,
+                model=self.backend_name,
+            )
+            result.evidence_refs["retrieved_guidelines"] = [
+                item["guideline_id"] for item in retrieved_guidelines
+            ]
             return ReviewAgentResult(
                 result=result,
                 attempts=0,
@@ -117,10 +157,55 @@ class GuidelineReviewAgent:
                 guideline_id=guideline.guideline_id,
             )
 
-        # AI backend: prompt + validate + retry.
         messages = build_review_messages(case, guideline, document_text)
+        ai_result = self._run_ai_review(
+            messages=messages,
+            guideline=guideline,
+            retrieved_guidelines=retrieved_guidelines,
+        )
+        if ai_result is not None:
+            return ai_result
+
+        # Exhausted retries or backend error on a real AI backend: fall back
+        # deterministically rather than failing the user request.
+        errors = getattr(self, "_last_ai_errors", [])
+        last_raw = getattr(self, "_last_ai_raw_text", "")
+        result = self.engine.review(case, document_text)
+        result.guideline_id = guideline.guideline_id
+        result.service_name = guideline.service_name
+        self._stamp_review_metadata(
+            result,
+            used_ai=False,
+            backend=backend,
+            model=backend,
+        )
+        result.evidence_refs["retrieved_guidelines"] = [
+            item["guideline_id"] for item in retrieved_guidelines
+        ]
+        return ReviewAgentResult(
+            result=result,
+            attempts=self.max_retries,
+            backend=backend,
+            model=backend,
+            used_ai=False,
+            repaired=True,
+            guideline_id=guideline.guideline_id,
+            raw_text=last_raw,
+            errors=errors,
+        )
+
+    def _run_ai_review(
+        self,
+        *,
+        messages: list[dict[str, str]],
+        guideline,
+        retrieved_guidelines: list[dict] | None = None,
+    ) -> ReviewAgentResult | None:
+        """Prompt the AI backend and return a valid review, or None on fallback."""
         errors: list[str] = []
         last_raw = ""
+        guideline_id = guideline.guideline_id if guideline is not None else None
+        service_name = guideline.service_name if guideline is not None else None
 
         for attempt in range(1, self.max_retries + 1):
             try:
@@ -135,10 +220,48 @@ class GuidelineReviewAgent:
                 result = ReviewResult.model_validate(data)
 
                 # Stamp guideline identity + sane confidence fallback.
-                result.guideline_id = guideline.guideline_id
-                result.service_name = guideline.service_name
+                if guideline is not None:
+                    result.guideline_id = guideline.guideline_id
+                    result.service_name = guideline.service_name
+                elif result.guideline_id:
+                    matched = self.repository.get(result.guideline_id)
+                    if matched is None:
+                        result.guideline_id = None
+                        result.service_name = None
+                        result.recommendation = Recommendation.INSUFFICIENT_INFORMATION
+                        result.matched_criteria = []
+                        result.missing_criteria = []
+                        result.missing_evidence = [
+                            "No matching local clinical guideline was available."
+                        ]
+                    else:
+                        result.guideline_id = matched.guideline_id
+                        result.service_name = matched.service_name
+                    guideline_id = result.guideline_id
+                    service_name = result.service_name
+                else:
+                    result.guideline_id = None
+                    result.service_name = None
+                    result.recommendation = Recommendation.INSUFFICIENT_INFORMATION
+                    result.matched_criteria = []
+                    result.missing_criteria = []
+                    result.missing_evidence = [
+                        "No matching local clinical guideline was available."
+                    ]
                 if result.confidence_score <= 0.0:
                     result.confidence_score = 0.6
+                self._stamp_review_metadata(
+                    result,
+                    used_ai=True,
+                    backend=self.backend_name,
+                    model=response.model,
+                )
+                if retrieved_guidelines:
+                    result.evidence_refs["retrieved_guidelines"] = [
+                        item["guideline_id"] for item in retrieved_guidelines
+                    ]
+                if service_name and not result.service_name:
+                    result.service_name = service_name
 
                 return ReviewAgentResult(
                     result=result,
@@ -147,7 +270,7 @@ class GuidelineReviewAgent:
                     model=response.model,
                     used_ai=True,
                     repaired=attempt > 1,
-                    guideline_id=guideline.guideline_id,
+                    guideline_id=guideline_id,
                     raw_text=last_raw,
                     errors=errors,
                 )
@@ -170,33 +293,23 @@ class GuidelineReviewAgent:
 
             except LLMError as exc:
                 errors.append(f"Attempt {attempt}: LLMError: {exc}")
-                # Backend failure: degrade gracefully to deterministic engine.
-                result = self.engine.review(case, document_text)
-                result.guideline_id = guideline.guideline_id
-                result.service_name = guideline.service_name
-                return ReviewAgentResult(
-                    result=result,
-                    attempts=attempt,
-                    backend=self.backend_name,
-                    model=self.backend_name,
-                    used_ai=False,
-                    guideline_id=guideline.guideline_id,
-                    errors=errors,
-                )
+                break
 
-        # Exhausted retries on a real AI backend: fall back deterministically
-        # rather than failing the user request.
-        result = self.engine.review(case, document_text)
-        result.guideline_id = guideline.guideline_id
-        result.service_name = guideline.service_name
-        return ReviewAgentResult(
-            result=result,
-            attempts=self.max_retries,
-            backend=self.backend_name,
-            model=self.backend_name,
-            used_ai=False,
-            repaired=True,
-            guideline_id=guideline.guideline_id,
-            raw_text=last_raw,
-            errors=errors,
-        )
+        self._last_ai_errors = errors
+        self._last_ai_raw_text = last_raw
+        return None
+
+    @staticmethod
+    def _stamp_review_metadata(
+        result: ReviewResult,
+        *,
+        used_ai: bool,
+        backend: str,
+        model: str,
+    ) -> None:
+        """Persist backend provenance on the review artifact itself."""
+        result.generated_by_ai = used_ai
+        result.review_backend = backend
+        result.review_model = model
+        result.reasoning_backend = backend if used_ai else None
+        result.reasoning_model = model if used_ai else None

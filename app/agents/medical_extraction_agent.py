@@ -19,11 +19,13 @@ from dataclasses import dataclass, field
 
 from pydantic import ValidationError as PydanticValidationError
 
+from app.agents.normalization import normalize_patient_case
 from app.agents.prompts import EXTRACTION_SYSTEM_PROMPT, build_extraction_messages
 from app.models.patient_case import PatientCase
 from app.services.factory import get_llm_client
 from app.services.json_utils import extract_json_object as _extract_json_object
 from app.services.llm_client import LLMClient, LLMError
+from app.services.provider_router import AITask, get_client_for_task
 
 
 class ExtractionError(Exception):
@@ -76,7 +78,7 @@ class MedicalExtractionAgent:
             max_retries: Total number of attempts (>= 1). Defaults to 3.
             max_tokens: Max tokens to request from the model per call.
         """
-        self.llm = llm_client or get_llm_client()
+        self.llm = llm_client or get_client_for_task(AITask.STRUCTURED_EXTRACTION)
         self.max_retries = max(1, max_retries)
         self.max_tokens = max_tokens
 
@@ -114,6 +116,10 @@ class MedicalExtractionAgent:
                 last_raw = response.text
                 data = _extract_json_object(response.text)
                 case = PatientCase.model_validate(data)
+                case = normalize_patient_case(case)
+                case.extraction_backend = self.backend_name
+                case.extraction_model = response.model
+                case.extraction_task = AITask.STRUCTURED_EXTRACTION.value
 
                 # Ensure a usable confidence score: if the model returned 0 or
                 # omitted it, fall back to completeness-based confidence.

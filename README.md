@@ -7,8 +7,8 @@ This repository implements three milestones:
 - **Milestone 1** — upload healthcare documents (PDF / TXT) and view extracted
   raw text.
 - **Milestone 2** — AI medical extraction: convert documents into a structured,
-  validated `PatientCase` (Claude Opus behind a service layer, with an offline
-  deterministic fallback).
+  validated `PatientCase` (hosted LLM backends behind a service layer, with an
+  offline deterministic fallback).
 - **Milestone 3** — clinical guideline decision engine: review a requested
   service against medical-necessity guidelines and return a structured
   `ReviewResult` (APPROVE / DENY / INSUFFICIENT_INFORMATION) with matched and
@@ -25,8 +25,8 @@ This repository implements three milestones:
 
 **Milestone 2 — structured AI extraction**
 - 🤖 `MedicalExtractionAgent` → validated `PatientCase` (pydantic)
-- 🔌 AI isolated behind a service layer (`app/services`); Claude Opus when
-  `ANTHROPIC_API_KEY` is set, deterministic offline backend otherwise
+- 🔌 AI isolated behind a service layer (`app/services`); Claude or Gemini when
+  configured, deterministic offline backend otherwise
 - 🔁 JSON validation with retry, confidence scoring, evaluation framework
 
 **Milestone 3 — clinical review**
@@ -132,7 +132,7 @@ HealthAI/
 │   ├── ui/              # Streamlit dashboard (19 tabs) + session caching
 │   ├── extraction/      # validation + raw text extraction + size validator
 │   ├── agents/          # MedicalExtractionAgent + prompts + eval (M2)
-│   ├── services/        # LLM service layer: Claude + local + mock backends
+│   ├── services/        # LLM service layer: Claude + Gemini + local + mock
 │   ├── guidelines/      # clinical guideline library: load + match (M3)
 │   ├── review/          # ClinicalReviewEngine + GuidelineReviewAgent (M3)
 │   ├── appeals/         # AppealGenerationAgent + letter builder (M4)
@@ -170,23 +170,38 @@ HealthAI/
 
 - **Python 3.12 — supported (recommended).** **Python 3.13 — experimental**
   (validated locally; see [`docs/environment.md`](docs/environment.md)).
-- Libraries: `streamlit`, `pymupdf`, `pydantic`, `pytest`, and the optional
-  `anthropic` SDK (only needed to use real Claude; the app runs offline without
-  it).
+- Libraries: `streamlit`, `pymupdf`, `pydantic`, `pytest`, and optional hosted
+  LLM SDKs (`anthropic`, `google-genai`; the app runs offline without keys).
 
 See [`docs/environment.md`](docs/environment.md) for dependency compatibility
 considerations (compiled wheels, optional SDK, offline-first testing).
 
-### Using real Claude (optional)
+### Using a hosted LLM backend (optional)
 
 ```powershell
-pip install anthropic
+pip install anthropic google-genai
+
+# Claude
 $env:ANTHROPIC_API_KEY = "sk-ant-..."
 # optional model override (defaults to claude-opus-4-8):
 $env:HEALTHAI_CLAUDE_MODEL = "claude-opus-4-8"
+
+# Gemini on Vertex AI (recommended; uses ADC, no AI Studio API key)
+gcloud auth application-default login
+gcloud config set project gen-lang-client-0121983409
+$env:HEALTHAI_LLM_BACKEND = "gemini"
+$env:HEALTHAI_STRUCTURED_EXTRACTION_BACKEND = "gemini"
+$env:HEALTHAI_CLINICAL_REASONING_BACKEND = "gemini"
+$env:HEALTHAI_APPEAL_DRAFTING_BACKEND = "gemini"
+# optional model override (defaults to gemini-2.5-flash):
+$env:HEALTHAI_GEMINI_MODEL = "gemini-2.5-flash"
+
+# Optional Vertex smoke-test chat app:
+streamlit run vertex_gemini_chat_app.py
 ```
 
-Without a key, extraction and review use the deterministic offline backends.
+Without ADC, an API key, or another configured hosted provider, extraction and
+review use the deterministic offline backends.
 
 ---
 

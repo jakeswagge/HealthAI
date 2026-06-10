@@ -8,6 +8,8 @@ from __future__ import annotations
 import streamlit as st
 
 from app.cases.export import build_export_zip
+from app.cases.appeal_service import ExportBlockedError
+from app.cases.workqueue import bucket_for_case
 from app.cases.service import CaseService
 from app.models.case_record import CaseStatus, HumanDecision
 from app.ui import session
@@ -88,6 +90,7 @@ def _render_case_detail(service: CaseService, case_id: str) -> None:
     if record.appeal_letter:
         with st.expander("Appeal letter"):
             st.markdown(record.appeal_letter.letter_text)
+            st.caption(f"Verification: {record.appeal_letter.verification.status.value}")
 
     # Export package (includes evidence + conflicts + M8 data when available).
     events = service.history(case_id)
@@ -125,35 +128,44 @@ def _render_case_detail(service: CaseService, case_id: str) -> None:
         record.review_result.payer_id if record.review_result else None
     )
     operational_health = service.operational_health()
-    zip_bytes = build_export_zip(
-        record,
-        events,
-        evidence=evidence or None,
-        conflict_report=conflict_report,
-        authoritative_facts=authoritative_facts or None,
-        conflict_resolutions=resolutions or None,
-        reviewer_feedback=feedback or None,
-        ocr_results=ocr_results or None,
-        evidence_quality=evidence_quality or None,
-        evidence_review_decisions=evidence_decisions or None,
-        governance_report=governance_report,
-        quality_analytics=analytics,
-        approved_evidence_set=approved_set,
-        all_evidence=evidence or None,
-        review_explanation=review_explanation,
-        appeal_explanation=appeal_explanation,
-        traceability_chain=traceability_chain,
-        payer_profile=payer_profile,
-        operational_health=operational_health,
-    )
-    if st.download_button(
-        "Download export package (ZIP)",
-        data=zip_bytes,
-        file_name=f"{case_id}_export.zip",
-        mime="application/zip",
-        key=f"export_{case_id}",
-    ):
-        service.mark_exported(case_id)
+    gate = service.export_safety_gate(case_id, settings)
+    if gate.blocked:
+        st.error("Export blocked by pilot safety policy.")
+        for reason in gate.reasons:
+            st.markdown(f"- {reason}")
+    else:
+        zip_bytes = build_export_zip(
+            record,
+            events,
+            evidence=evidence or None,
+            conflict_report=conflict_report,
+            authoritative_facts=authoritative_facts or None,
+            conflict_resolutions=resolutions or None,
+            reviewer_feedback=feedback or None,
+            ocr_results=ocr_results or None,
+            evidence_quality=evidence_quality or None,
+            evidence_review_decisions=evidence_decisions or None,
+            governance_report=governance_report,
+            quality_analytics=analytics,
+            approved_evidence_set=approved_set,
+            all_evidence=evidence or None,
+            review_explanation=review_explanation,
+            appeal_explanation=appeal_explanation,
+            traceability_chain=traceability_chain,
+            payer_profile=payer_profile,
+            operational_health=operational_health,
+        )
+        if st.download_button(
+            "Download export package (ZIP)",
+            data=zip_bytes,
+            file_name=f"{case_id}_export.zip",
+            mime="application/zip",
+            key=f"export_{case_id}",
+        ):
+            try:
+                service.mark_exported(case_id)
+            except ExportBlockedError as exc:
+                st.error(f"Export blocked: {exc}")
 
 
 # --------------------------------------------------------------------------- #
@@ -179,6 +191,9 @@ def render_human_review_tab() -> None:
         return
 
     st.markdown(f"#### {record.display_name()}")
+    bucket = bucket_for_case(record)
+    if bucket:
+        st.info(f"Workqueue: **{bucket.value}**")
     if record.review_result:
         rec = record.review_result.recommendation.value
         st.markdown(f"**System recommendation:** {rec}")
@@ -199,6 +214,9 @@ def render_human_review_tab() -> None:
     if submitted:
         if not reviewer.strip():
             st.error("Reviewer name is required.")
+            return
+        if not comments.strip():
+            st.error("Reviewer comments are required.")
             return
         service.record_human_review(selected, reviewer.strip(), decision, comments)
         updated = service.get_case(selected)
@@ -234,6 +252,8 @@ def render_audit_log_tab() -> None:
             "event_type": e.event_type.value,
             "actor": e.actor.value,
             "details": e.details,
+            "event_hash": e.event_hash or "",
+            "previous_hash": e.previous_hash or "",
         }
         for e in events
     ]

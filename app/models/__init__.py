@@ -94,6 +94,14 @@ from app.models.explanation import (
 )
 from app.models.payer import KNOWN_PACKS, PayerProfile, PayerStatus
 from app.models.operational_health import OperationalHealthReport
+from app.models.patient_case import NormalizedField
+from app.models.safety import (
+    DEFAULT_CONFIDENCE_THRESHOLD,
+    AppealVerificationResult,
+    AppealVerificationStatus,
+    SafetyGateDecision,
+    SafetyGateStatus,
+)
 
 __all__ = [
     "DocumentType",
@@ -102,6 +110,7 @@ __all__ = [
     "CORE_FIELDS",
     "Decision",
     "FieldSource",
+    "NormalizedField",
     "PatientCase",
     "ClinicalGuideline",
     "Contraindication",
@@ -164,4 +173,9 @@ __all__ = [
     "PayerProfile",
     "PayerStatus",
     "OperationalHealthReport",
+    "DEFAULT_CONFIDENCE_THRESHOLD",
+    "AppealVerificationResult",
+    "AppealVerificationStatus",
+    "SafetyGateDecision",
+    "SafetyGateStatus",
 ]

@@ -74,6 +74,16 @@ class ReviewResult(BaseModel):
     guideline_version: Optional[str] = Field(
         default=None, description="Version of the guideline/pack used."
     )
+    generated_by_ai: bool = Field(
+        default=False,
+        description="Whether a real AI backend produced this review result.",
+    )
+    review_backend: Optional[str] = Field(
+        default=None, description="Backend that produced the review result."
+    )
+    review_model: Optional[str] = Field(
+        default=None, description="Model/backend identifier for the review result."
+    )
     missing_evidence: list[str] = Field(
         default_factory=list,
         description="Specific evidence needed to complete the review.",
@@ -117,6 +127,16 @@ class ReviewResult(BaseModel):
     recommendation_evidence_ids: list[str] = Field(
         default_factory=list,
         description="EvidenceReference ids supporting the recommendation.",
+    )
+    reasoning_backend: Optional[str] = Field(
+        default=None, description="Backend that produced AI reasoning, if any."
+    )
+    reasoning_model: Optional[str] = Field(
+        default=None, description="Model identifier that produced AI reasoning."
+    )
+    safety_gate: dict = Field(
+        default_factory=dict,
+        description="Latest safety-gate outcome for this review result.",
     )
 
     @field_validator("recommendation", mode="before")

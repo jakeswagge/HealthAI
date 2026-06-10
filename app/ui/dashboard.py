@@ -20,7 +20,7 @@ when:
   2. the user clicks an explicit "reprocess" / run button.
 
 Because Streamlit reruns the whole script on every interaction (including tab
-switches), the cache is what prevents redundant Claude calls. Switching tabs
+switches), the cache is what prevents redundant AI backend calls. Switching tabs
 never triggers extraction or review. See ``docs/caching.md``.
 
 AI access remains isolated behind the service layer; this UI only talks to the
@@ -45,7 +45,16 @@ from app.models.document import SUPPORTED_EXTENSIONS
 from app.models.patient_case import Decision
 from app.models.review_result import Recommendation
 from app.review.review_agent import GuidelineReviewAgent
-from app.services.factory import describe_active_backend, get_llm_client
+from app.services.factory import (
+    describe_active_backend,
+    get_llm_client,
+)
+from app.services.local_client import LocalHeuristicClient
+from app.services.provider_router import (
+    AITask,
+    describe_task_backend,
+    get_client_for_task,
+)
 from app.ui import case_ui, session
 from app.ui.tabs.common import get_case_service
 
@@ -53,6 +62,16 @@ from app.ui.tabs.common import get_case_service
 SAMPLE_DOCS_DIR = Path(__file__).resolve().parents[2] / "data" / "sample_docs"
 
 _SIZE_VALIDATOR = DocumentSizeValidator()
+
+
+def get_patient_details_client():
+    """Backward-compatible dashboard hook for structured extraction backend."""
+    return get_client_for_task(AITask.STRUCTURED_EXTRACTION)
+
+
+def describe_patient_details_backend() -> str:
+    """Backward-compatible label for structured extraction backend."""
+    return describe_task_backend(AITask.STRUCTURED_EXTRACTION)
 
 
 # --------------------------------------------------------------------------- #
@@ -186,7 +205,7 @@ def _active_pipeline_ready() -> bool:
 def _get_or_extract_case(force: bool = False):
     """Return the cached PatientCase, running the agent only if needed.
 
-    The MedicalExtractionAgent (potential Claude call) runs only when there is
+    The MedicalExtractionAgent (potential AI backend call) runs only when there is
     no cached case or ``force`` is True (explicit reprocess).
     """
     record = _selected_case_record()
@@ -204,7 +223,7 @@ def _get_or_extract_case(force: bool = False):
 
     with st.spinner("Running Medical Extraction Agent..."):
         try:
-            agent = MedicalExtractionAgent(llm_client=get_llm_client())
+            agent = MedicalExtractionAgent(llm_client=get_patient_details_client())
             result = agent.extract(text)
         except ExtractionError as exc:
             st.error(f"Extraction failed: {exc}")
@@ -221,24 +240,51 @@ def _get_or_extract_case(force: bool = False):
     return result.case
 
 
-def _get_or_run_review(force: bool = False):
+def _get_or_run_review(force: bool = False, mode: str = "auto"):
     """Return the cached review, running the review agent only if needed."""
+    mode = mode.lower().strip()
+    if mode not in {"auto", "ai", "local"}:
+        raise ValueError(f"Unknown review mode: {mode!r}")
+
     record = _selected_case_record()
-    if record and record.review_result is not None and not force:
-        session.set_review(record.review_result, used_ai=False)
-        return record.review_result, False
+    explicit_mode = mode in {"ai", "local"}
+    if record and record.review_result is not None and not force and not explicit_mode:
+        used_ai = bool(getattr(record.review_result, "generated_by_ai", False))
+        session.set_review(record.review_result, used_ai=used_ai)
+        return record.review_result, used_ai
 
     cached = session.get_review()
-    if cached is not None and not force:
-        return cached, session.get_review_used_ai()
+    if cached is not None and not force and not explicit_mode:
+        used_ai = session.get_review_used_ai() or bool(
+            getattr(cached, "generated_by_ai", False)
+        )
+        return cached, used_ai
 
     case = _get_or_extract_case(force=False)
     text = _selected_case_text() or session.get_text()
     if case is None:
         return None, False
 
-    with st.spinner("Running clinical review..."):
-        agent = GuidelineReviewAgent(llm_client=get_llm_client())
+    if mode == "local":
+        llm_client = LocalHeuristicClient()
+        spinner_label = "Running local rule-based clinical review..."
+    else:
+        llm_client = get_client_for_task(AITask.CLINICAL_REASONING)
+        if mode == "ai" and not llm_client.is_ai:
+            st.error(
+                "AI reasoning is not configured. Set `ANTHROPIC_API_KEY`, "
+                "`ANTHROPIC_AUTH_TOKEN`, `GEMINI_API_KEY`, or `GOOGLE_API_KEY`, "
+                "then rerun AI reasoning."
+            )
+            return None, False
+        spinner_label = (
+            "Running AI clinical review..."
+            if mode == "ai"
+            else "Running clinical review..."
+        )
+
+    with st.spinner(spinner_label):
+        agent = GuidelineReviewAgent(llm_client=llm_client)
         review = agent.review(case, text)
 
     session.set_review(review.result, review.used_ai)
@@ -251,7 +297,7 @@ def _get_or_generate_appeal(force: bool = False):
     """Return the cached appeal, generating it only if needed.
 
     Depends on the cached case + review. The AppealGenerationAgent (potential
-    Claude call) runs only when there is no cached appeal or ``force`` is True.
+    AI backend call) runs only when there is no cached appeal or ``force`` is True.
     """
     record = _selected_case_record()
     if record and record.appeal_letter is not None and not force:
@@ -268,7 +314,9 @@ def _get_or_generate_appeal(force: bool = False):
         return None, False
 
     with st.spinner("Generating appeal letter..."):
-        agent = AppealGenerationAgent(llm_client=get_llm_client())
+        agent = AppealGenerationAgent(
+            llm_client=get_client_for_task(AITask.APPEAL_DRAFTING)
+        )
         try:
             result = agent.generate(case, review)
         except AppealAgentError as exc:
@@ -369,13 +417,18 @@ def _render_structured_tab() -> None:
         "Agent to produce a structured, validated patient record."
     )
 
-    backend_desc = describe_active_backend()
-    st.info(f"Active extraction backend: **{backend_desc}**")
+    backend_desc = describe_patient_details_backend()
+    st.info(f"Patient details backend: **{backend_desc}**")
     if "Local heuristic" in backend_desc:
         st.caption(
-            "No `ANTHROPIC_API_KEY` detected, so the offline heuristic backend "
-            "is in use. Set the key (and `pip install anthropic`) to use "
-            "Claude Opus — no other changes needed."
+            "No hosted LLM API key detected, so the offline heuristic backend "
+            "is in use. Set `ANTHROPIC_API_KEY` or `GEMINI_API_KEY` and select "
+            "the matching backend to use a hosted model."
+        )
+    elif "Gemini" in backend_desc:
+        st.caption(
+            "Structured patient details are produced with Gemini when available, "
+            "so downstream review and appeal tabs use the cleaner normalized case."
         )
 
     if not _active_pipeline_ready():
@@ -398,13 +451,13 @@ def _render_structured_tab() -> None:
         type="primary",
         key="run_extract",
         disabled=cached_case is not None,
-        help="Runs the extraction agent (may call Claude).",
+        help="Runs the extraction agent (may call the configured AI backend).",
     )
     reprocess = col_reprocess.button(
         "Reprocess",
         key="reprocess_extract",
         disabled=cached_case is None,
-        help="Force a fresh extraction (re-runs Claude).",
+        help="Force a fresh extraction (re-runs the configured AI backend).",
     )
 
     if reprocess:
@@ -421,7 +474,7 @@ def _render_structured_tab() -> None:
         return
 
     if session.get_case() is not None and not run and not reprocess:
-        st.caption("Showing cached result (no new Claude call was made).")
+        st.caption("Showing cached result (no new AI backend call was made).")
 
     meta = session.get_extraction_meta()
 
@@ -431,6 +484,11 @@ def _render_structured_tab() -> None:
         attempts_col.metric("Attempts", meta.attempts)
         backend_col.metric("Backend", meta.backend)
     st.progress(case.confidence_score)
+    gate = getattr(case, "safety_gate", {}) or {}
+    if gate.get("status") == "HUMAN_REVIEW_REQUIRED":
+        st.warning("Safety gate: human review required.")
+        for reason in gate.get("reasons", []):
+            st.markdown(f"- {reason}")
 
     if meta and meta.repaired:
         st.caption(
@@ -474,9 +532,13 @@ def _render_clinical_review_tab() -> None:
     backend_desc = describe_active_backend()
     st.info(f"Active backend: **{backend_desc}**")
     st.caption(
-        "Review uses the Claude-backed agent when an API key is configured, "
+        "Review uses the configured AI-backed agent when an API key is configured, "
         "and a deterministic rule-based engine otherwise. The output schema is "
         "identical either way."
+    )
+    st.caption(
+        f"Patient details source: **{describe_patient_details_backend()}**. "
+        "Those structured details feed both AI reasoning and local rule review."
     )
 
     if not _active_pipeline_ready():
@@ -492,49 +554,78 @@ def _render_clinical_review_tab() -> None:
         _render_size_warnings(text, session.get_page_count())
 
     record = _selected_case_record()
-    cached_review = record.review_result if record and record.review_result is not None else session.get_review()
-    col_run, col_reprocess = st.columns(2)
-    run = col_run.button(
-        "Run clinical review",
+    cached_review = (
+        record.review_result
+        if record and record.review_result is not None
+        else session.get_review()
+    )
+    col_ai, col_local, col_clear = st.columns(3)
+    run_ai = col_ai.button(
+        "AI reasoning",
         type="primary",
-        key="run_review",
-        disabled=cached_review is not None,
-        help="Extracts the case (if needed) and runs the review (may call Claude).",
+        key="run_review_ai",
+        help=(
+            "Extracts the case if needed, then runs clinical review using the "
+            "configured hosted AI backend."
+        ),
     )
-    reprocess = col_reprocess.button(
-        "Reprocess",
-        key="reprocess_review",
+    run_local = col_local.button(
+        "Local rule review",
+        key="run_review_local",
+        help=(
+            "Extracts the case if needed, then runs the deterministic local "
+            "rule engine with no AI backend call."
+        ),
+    )
+    clear_review = col_clear.button(
+        "Clear review",
+        key="clear_review",
         disabled=cached_review is None,
-        help="Force a fresh case extraction + review (re-runs Claude).",
+        help="Clears the cached review so no previous result is shown.",
     )
 
-    if reprocess:
-        session.invalidate_case_and_review()
+    if run_ai or run_local or clear_review:
+        session.invalidate_review()
 
-    if cached_review is None and not run and not _database_case_ready():
+    if (
+        cached_review is None
+        and not run_ai
+        and not run_local
+        and not _database_case_ready()
+    ):
         with st.expander("Preview extracted text"):
             st.text(text[:2000])
-        st.info("Click **Run clinical review** to analyze this document.")
+        st.info("Choose **AI reasoning** or **Local rule review** to analyze this document.")
         return
 
-    case = _get_or_extract_case(force=reprocess)
+    case = _get_or_extract_case(force=False)
     if case is None:
         return
 
-    result, used_ai = _get_or_run_review(force=reprocess)
+    if clear_review and not run_ai and not run_local:
+        st.info("Review cleared. Choose **AI reasoning** or **Local rule review** to run it again.")
+        return
+
+    review_mode = "ai" if run_ai else "local" if run_local else "auto"
+    result, used_ai = _get_or_run_review(force=(run_ai or run_local), mode=review_mode)
     if result is None:
         return
 
-    if cached_review is not None and not run and not reprocess:
-        st.caption("Showing cached review (no new Claude call was made).")
+    if cached_review is not None and not run_ai and not run_local:
+        st.caption("Showing cached review (no new AI backend call was made).")
 
     _render_recommendation_banner(result.recommendation)
 
     conf_col, guideline_col, ai_col = st.columns(3)
     conf_col.metric("Confidence", f"{result.confidence_score:.0%}")
     guideline_col.metric("Guideline", result.guideline_id or "none matched")
-    ai_col.metric("Reasoning", "Claude" if used_ai else "Rule engine")
+    ai_col.metric("Reasoning", "AI backend" if used_ai else "Rule engine")
     st.progress(result.confidence_score)
+    gate = getattr(result, "safety_gate", {}) or {}
+    if gate.get("status") == "HUMAN_REVIEW_REQUIRED":
+        st.warning("Safety gate: human review required.")
+        for reason in gate.get("reasons", []):
+            st.markdown(f"- {reason}")
 
     with st.expander("Patient case used for review"):
         _render_patient_summary(case)
@@ -597,9 +688,13 @@ def _render_appeal_tab() -> None:
     backend_desc = describe_active_backend()
     st.info(f"Active backend: **{backend_desc}**")
     st.caption(
-        "Appeal drafting uses the Claude-backed agent when an API key is "
+        "Appeal drafting uses the configured AI-backed agent when an API key is "
         "configured, and a deterministic letter builder otherwise. Both honor "
         "the same safety rules: no fabricated clinical facts."
+    )
+    st.caption(
+        f"Patient details source: **{describe_patient_details_backend()}**. "
+        "The appeal uses these structured details when drafting patient and case sections."
     )
 
     if not _active_pipeline_ready():
@@ -623,13 +718,13 @@ def _render_appeal_tab() -> None:
         key="run_appeal",
         disabled=cached_appeal is not None,
         help="Extracts the case + review (if needed) and drafts the appeal "
-        "(may call Claude).",
+        "(may call the configured AI backend).",
     )
     reprocess = col_reprocess.button(
         "Regenerate",
         key="reprocess_appeal",
         disabled=cached_appeal is None,
-        help="Force a fresh appeal letter (re-runs Claude).",
+        help="Force a fresh appeal letter (re-runs the configured AI backend).",
     )
 
     if reprocess:
@@ -648,7 +743,7 @@ def _render_appeal_tab() -> None:
         return
 
     # Ensure prerequisites (case + review) exist; these are cached and only
-    # invoke Claude if not already computed.
+    # invoke the configured AI backend if not already computed.
     case = _get_or_extract_case(force=False)
     if case is None:
         return
@@ -664,14 +759,21 @@ def _render_appeal_tab() -> None:
         return
 
     if cached_appeal is not None and not run and not reprocess:
-        st.caption("Showing cached appeal (no new Claude call was made).")
+        st.caption("Showing cached appeal (no new AI backend call was made).")
 
     # Appeal summary + confidence.
     conf_col, decision_col, ai_col = st.columns(3)
     conf_col.metric("Confidence", f"{appeal.confidence_score:.0%}")
     decision_col.metric("Original decision", (appeal.original_decision or "—").upper())
-    ai_col.metric("Drafted by", "Claude" if used_ai else "Letter builder")
+    ai_col.metric("Drafted by", "AI backend" if used_ai else "Letter builder")
     st.progress(appeal.confidence_score)
+    if appeal.verification.status.value != "NOT_RUN":
+        st.caption(f"Appeal verification: {appeal.verification.status.value}")
+    gate = getattr(appeal, "safety_gate", {}) or {}
+    if gate.get("status") == "HUMAN_REVIEW_REQUIRED":
+        st.warning("Safety gate: human review required.")
+        for reason in gate.get("reasons", []):
+            st.markdown(f"- {reason}")
 
     st.markdown("#### Appeal summary")
     st.write(appeal.summary())

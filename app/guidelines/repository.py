@@ -144,6 +144,45 @@ class GuidelineRepository:
         scored.sort(key=lambda m: m.score, reverse=True)
         return scored
 
+    def retrieve(self, case: PatientCase, limit: int = 5) -> list[dict]:
+        """Return local guideline candidates as RAG-ready dictionaries."""
+        candidates = self.match_all(case)
+        if all(c.score <= 0 for c in candidates):
+            candidates = candidates[:limit]
+        else:
+            candidates = [c for c in candidates if c.score > 0][:limit]
+        out: list[dict] = []
+        for match in candidates:
+            g = match.guideline
+            out.append(
+                {
+                    "guideline_id": g.guideline_id,
+                    "service_name": g.service_name,
+                    "aliases": g.aliases,
+                    "source": g.source,
+                    "version": g.version,
+                    "score": match.score,
+                    "match_reasons": match.reasons,
+                    "required_criteria": [
+                        {
+                            "id": c.id,
+                            "description": c.description,
+                            "keywords": c.keywords,
+                        }
+                        for c in g.required_criteria
+                    ],
+                    "contraindications": [
+                        {
+                            "id": c.id,
+                            "description": c.description,
+                            "keywords": c.keywords,
+                        }
+                        for c in g.contraindications
+                    ],
+                }
+            )
+        return out
+
 
 _DEFAULT_REPO: Optional[GuidelineRepository] = None
 

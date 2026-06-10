@@ -34,6 +34,8 @@ from app.explainability.engine import ExplainabilityEngine
 from app.quality.decision_repository import EvidenceReviewDecisionRepository
 from app.quality.repository import EvidenceQualityRepository
 from app.appeals.appeal_agent import AppealGenerationAgent
+from app.appeals.verifier import AppealVerifier
+from app.governance.safety import SafetyGate
 from app.review.review_agent import GuidelineReviewAgent
 from app.models.appeal_letter import AppealLetter
 from app.models.audit_event import AuditEventType
@@ -185,8 +187,22 @@ class ExplainabilityService:
             governed_review.patient_case, governed_review.review
         )
         appeal = agent_result.appeal
+        appeal.drafted_by_ai = agent_result.used_ai
+        appeal.draft_backend = agent_result.backend
+        appeal.draft_model = agent_result.model
 
         all_evidence = self.evidence.for_case(case_id)
+        verifier_context = self.assembly.synthesize_from_evidence(
+            case_id,
+            [
+                ev for ev in all_evidence
+                if ev.evidence_id in set(governed_review.approved_set.included_ids)
+            ],
+            self.documents.for_case(case_id),
+        )
+        appeal = AppealVerifier().verify(appeal, verifier_context)
+        gate = SafetyGate(settings or self.governance.get_governance_settings()).appeal(appeal)
+        appeal.safety_gate = gate.model_dump(mode="json")
         explanation = self.explainability.explain_appeal(
             case_id,
             appeal,

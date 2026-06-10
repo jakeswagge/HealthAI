@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import sqlite3
 from pathlib import Path
 
@@ -23,11 +25,32 @@ class AuditRepository:
     # ------------------------------------------------------------------ #
     def record(self, event: AuditEvent) -> AuditEvent:
         """Persist an audit event."""
+        previous_hash = event.previous_hash or self._latest_hash()
+        payload_hash = event.payload_hash or hashlib.sha256(
+            (event.details or "").encode("utf-8")
+        ).hexdigest()
+        event_hash = event.event_hash or self._event_hash(
+            event,
+            previous_hash=previous_hash,
+            payload_hash=payload_hash,
+        )
+        event = event.model_copy(
+            update={
+                "previous_hash": previous_hash,
+                "payload_hash": payload_hash,
+                "event_hash": event_hash,
+                "resource_type": event.resource_type or "case",
+                "resource_id": event.resource_id or event.case_id,
+                "action": event.action or event.event_type.value,
+            }
+        )
         self.conn.execute(
             """
             INSERT INTO audit_events
-                (event_id, timestamp, case_id, event_type, actor, details)
-            VALUES (?, ?, ?, ?, ?, ?)
+                (event_id, timestamp, case_id, event_type, actor, details,
+                 previous_hash, event_hash, resource_type, resource_id, action,
+                 payload_hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 event.event_id,
@@ -36,6 +59,12 @@ class AuditRepository:
                 event.event_type.value,
                 event.actor.value,
                 event.details,
+                event.previous_hash,
+                event.event_hash,
+                event.resource_type,
+                event.resource_id,
+                event.action,
+                event.payload_hash,
             ),
         )
         self.conn.commit()
@@ -69,7 +98,44 @@ class AuditRepository:
             event_type=row["event_type"],
             actor=row["actor"],
             details=row["details"] or "",
+            previous_hash=row["previous_hash"],
+            event_hash=row["event_hash"],
+            resource_type=row["resource_type"],
+            resource_id=row["resource_id"],
+            action=row["action"],
+            payload_hash=row["payload_hash"],
         )
+
+    def _latest_hash(self) -> str | None:
+        row = self.conn.execute(
+            """
+            SELECT event_hash FROM audit_events
+            WHERE event_hash IS NOT NULL
+            ORDER BY timestamp DESC, rowid DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        return row["event_hash"] if row else None
+
+    @staticmethod
+    def _event_hash(
+        event: AuditEvent,
+        *,
+        previous_hash: str | None,
+        payload_hash: str,
+    ) -> str:
+        payload = {
+            "event_id": event.event_id,
+            "timestamp": event.timestamp,
+            "case_id": event.case_id,
+            "event_type": event.event_type.value,
+            "actor": event.actor.value,
+            "details": event.details,
+            "previous_hash": previous_hash,
+            "payload_hash": payload_hash,
+        }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
     def for_case(self, case_id: str) -> list[AuditEvent]:
         """Return all events for a case, oldest first."""

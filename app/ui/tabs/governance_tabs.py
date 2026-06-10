@@ -39,12 +39,28 @@ def render_governance_settings_tab() -> None:
             "Minimum evidence quality score", 0.0, 1.0,
             float(current.minimum_quality_score), 0.05,
         )
+        confidence_threshold = st.slider(
+            "Automation confidence threshold",
+            0.0,
+            1.0,
+            float(current.confidence_threshold),
+            0.05,
+            help="Artifacts below this confidence route to human review.",
+        )
         require_conflict = st.toggle(
             "Require conflict resolution", value=current.require_conflict_resolution
         )
         require_human = st.toggle(
             "Require human review before export",
             value=current.require_human_review_before_export,
+        )
+        block_denials = st.toggle(
+            "Block autonomous denials",
+            value=current.block_autonomous_denials,
+        )
+        require_verified_claims = st.toggle(
+            "Require verified appeal claims",
+            value=current.require_verified_appeal_claims,
         )
         reviewer = st.text_input("Your name (for the audit trail)", value="admin")
         submitted = st.form_submit_button("Save governance settings", type="primary")
@@ -57,6 +73,9 @@ def render_governance_settings_tab() -> None:
                 minimum_quality_score=min_quality,
                 require_conflict_resolution=require_conflict,
                 require_human_review_before_export=require_human,
+                confidence_threshold=confidence_threshold,
+                block_autonomous_denials=block_denials,
+                require_verified_appeal_claims=require_verified_claims,
             ),
             actor=reviewer.strip() or "admin",
         )

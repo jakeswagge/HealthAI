@@ -18,6 +18,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.models.safety import DEFAULT_CONFIDENCE_THRESHOLD
+
 
 class EvidenceMode(str, Enum):
     """How evidence is selected for downstream use."""
@@ -51,8 +53,22 @@ class GovernanceSettings(BaseModel):
         description="Require all detected conflicts to be resolved before export.",
     )
     require_human_review_before_export: bool = Field(
-        default=False,
+        default=True,
         description="Require a human-review decision before a case may be exported.",
+    )
+    confidence_threshold: float = Field(
+        default=DEFAULT_CONFIDENCE_THRESHOLD,
+        ge=0.0,
+        le=1.0,
+        description="Pilot threshold below which artifacts require human review.",
+    )
+    block_autonomous_denials: bool = Field(
+        default=True,
+        description="Prevent AI/local recommendations from being exported as denials without human sign-off.",
+    )
+    require_verified_appeal_claims: bool = Field(
+        default=True,
+        description="Require appeal claims to be verified against source evidence before export.",
     )
 
     @field_validator("minimum_quality_score", mode="before")
@@ -64,6 +80,17 @@ class GovernanceSettings(BaseModel):
             f = float(v)
         except (TypeError, ValueError):
             return 0.0
+        return max(0.0, min(1.0, f))
+
+    @field_validator("confidence_threshold", mode="before")
+    @classmethod
+    def _coerce_threshold(cls, v):
+        if v is None:
+            return DEFAULT_CONFIDENCE_THRESHOLD
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return DEFAULT_CONFIDENCE_THRESHOLD
         return max(0.0, min(1.0, f))
 
     @property

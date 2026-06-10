@@ -46,7 +46,13 @@ CREATE TABLE IF NOT EXISTS audit_events (
     case_id    TEXT NOT NULL,
     event_type TEXT NOT NULL,
     actor      TEXT NOT NULL,
-    details    TEXT
+    details    TEXT,
+    previous_hash TEXT,
+    event_hash TEXT,
+    resource_type TEXT,
+    resource_id TEXT,
+    action TEXT,
+    payload_hash TEXT
 );
 """
 
@@ -173,7 +179,10 @@ CREATE TABLE IF NOT EXISTS governance_settings (
     allow_unreviewed_evidence          INTEGER NOT NULL DEFAULT 1,
     minimum_quality_score              REAL NOT NULL DEFAULT 0.0,
     require_conflict_resolution        INTEGER NOT NULL DEFAULT 0,
-    require_human_review_before_export INTEGER NOT NULL DEFAULT 0,
+    require_human_review_before_export INTEGER NOT NULL DEFAULT 1,
+    confidence_threshold               REAL NOT NULL DEFAULT 0.85,
+    block_autonomous_denials           INTEGER NOT NULL DEFAULT 1,
+    require_verified_appeal_claims     INTEGER NOT NULL DEFAULT 1,
     updated_at                         TEXT
 );
 """
@@ -254,6 +263,15 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
     conn.execute(_EVIDENCE_QUALITY_DDL)
     conn.execute(_EVIDENCE_REVIEW_DDL)
     conn.execute(_GOVERNANCE_SETTINGS_DDL)
+    _ensure_column(conn, "governance_settings", "confidence_threshold", "REAL NOT NULL DEFAULT 0.85")
+    _ensure_column(conn, "governance_settings", "block_autonomous_denials", "INTEGER NOT NULL DEFAULT 1")
+    _ensure_column(conn, "governance_settings", "require_verified_appeal_claims", "INTEGER NOT NULL DEFAULT 1")
+    _ensure_column(conn, "audit_events", "previous_hash", "TEXT")
+    _ensure_column(conn, "audit_events", "event_hash", "TEXT")
+    _ensure_column(conn, "audit_events", "resource_type", "TEXT")
+    _ensure_column(conn, "audit_events", "resource_id", "TEXT")
+    _ensure_column(conn, "audit_events", "action", "TEXT")
+    _ensure_column(conn, "audit_events", "payload_hash", "TEXT")
     conn.execute(_AUDIT_INDEX_DDL)
     conn.execute(_CASES_STATUS_INDEX_DDL)
     conn.execute(_DOCS_CASE_INDEX_DDL)
@@ -269,3 +287,18 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
     conn.execute(_EVR_CASE_INDEX_DDL)
     conn.execute(_EVR_EVIDENCE_INDEX_DDL)
     conn.commit()
+
+
+def _ensure_column(
+    conn: sqlite3.Connection,
+    table: str,
+    column: str,
+    definition: str,
+) -> None:
+    """Add a column to an existing SQLite table when missing."""
+    existing = {
+        row["name"]
+        for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+    }
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")

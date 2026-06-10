@@ -18,12 +18,13 @@ Concrete backends (`app/services/`):
 | Backend | `is_ai` | Use |
 |---------|---------|-----|
 | `AnthropicClient` | True | Real Claude (Messages API). Model via `HEALTHAI_CLAUDE_MODEL`, default `claude-opus-4-8`. |
+| `GeminiClient` | True | Real Gemini. Model via `HEALTHAI_GEMINI_MODEL`, default `gemini-3.5-flash`. |
 | `LocalHeuristicClient` | False | Offline regex extraction; default when no key. |
 | `MockClaudeClient` | True | Scenario-driven test double (valid / invalid_json / markdown / hallucinated / truncated / empty / prose). |
 
 `factory.get_llm_client()` resolution: `HEALTHAI_LLM_BACKEND` override →
-`ANTHROPIC_API_KEY` present → Anthropic → else local. `describe_active_backend()`
-provides a UI label.
+`ANTHROPIC_API_KEY` present → Anthropic → `GEMINI_API_KEY` / `GOOGLE_API_KEY`
+present → Gemini → else local. `describe_active_backend()` provides a UI label.
 
 ## Agents (each: AI path + deterministic fallback)
 

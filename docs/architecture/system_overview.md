@@ -12,8 +12,8 @@ letters, and runs a full reviewer-governed case-management workflow — with
 end-to-end traceability and an append-only audit trail.
 
 It runs entirely on a developer machine: a Streamlit UI, a local SQLite store,
-and an LLM service layer that uses Claude when configured and deterministic
-offline backends otherwise.
+and an LLM service layer that uses a hosted backend when configured and
+deterministic offline backends otherwise.
 
 ## Top-level shape
 
@@ -49,8 +49,9 @@ app/
 
 1. **AI is isolated behind a service layer.** Everything that calls a model
    goes through `app/services/llm_client.LLMClient`. Concrete backends:
-   `AnthropicClient` (real Claude), `LocalHeuristicClient` (offline regex),
-   `MockClaudeClient` (tests). `get_llm_client()` auto-selects.
+   `AnthropicClient` (real Claude), `GeminiClient` (real Gemini),
+   `LocalHeuristicClient` (offline regex), `MockClaudeClient` (tests).
+   `get_llm_client()` auto-selects.
 2. **Offline-first, deterministic fallback.** Every AI-backed agent
    (extraction, review, appeal, evidence) falls back to a deterministic engine,
    so the app and the full test suite run with no API key.
@@ -71,11 +72,12 @@ app/
 
 | Concern | Real backend | Offline / test backend |
 |---------|--------------|------------------------|
-| LLM | `AnthropicClient` (Claude Opus) | `LocalHeuristicClient`, `MockClaudeClient` |
+| LLM | `AnthropicClient` (Claude), `GeminiClient` (Gemini) | `LocalHeuristicClient`, `MockClaudeClient` |
 | OCR | `LocalTesseractOCRProvider` | `MockOCRProvider` |
 | Storage | SQLite file `data/healthai.db` | `":memory:"` in tests |
 
-Selection: `ANTHROPIC_API_KEY` / `HEALTHAI_LLM_BACKEND` for the LLM;
+Selection: `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY`, and
+`HEALTHAI_LLM_BACKEND` for the LLM;
 `get_ocr_provider()` probes for Tesseract and falls back to the mock.
 
 ## High-level pipeline

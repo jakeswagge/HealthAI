@@ -1,7 +1,8 @@
 """Anthropic Claude backend for the LLM service layer.
 
 This is the real-AI implementation. It is used automatically when an
-``ANTHROPIC_API_KEY`` is configured and the ``anthropic`` SDK is installed.
+``ANTHROPIC_API_KEY`` or ``ANTHROPIC_AUTH_TOKEN`` is configured and the
+``anthropic`` SDK is installed.
 The agent code never imports the SDK directly - only this module does.
 
 Model selection (highest preference first) targets Claude Opus, configurable
@@ -29,10 +30,15 @@ class AnthropicClient(LLMClient):
         model: str = DEFAULT_MODEL,
     ) -> None:
         self.model = model
-        self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+        self._api_key = (
+            api_key
+            or os.environ.get("ANTHROPIC_API_KEY")
+            or os.environ.get("ANTHROPIC_AUTH_TOKEN")
+        )
         if not self._api_key:
             raise LLMError(
-                "ANTHROPIC_API_KEY is not set; cannot use the Anthropic backend."
+                "ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN is not set; cannot "
+                "use the Anthropic backend."
             )
 
         try:

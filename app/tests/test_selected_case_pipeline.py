@@ -11,7 +11,9 @@ from app.appeals.appeal_agent import AppealAgentError
 from app.cases.service import CaseService
 from app.models.case_document import DocumentCategory
 from app.models.patient_case import Decision, PatientCase
-from app.models.review_result import Recommendation
+from app.models.review_result import Recommendation, ReviewResult
+from app.services.llm_client import LLMClient, LLMResponse
+from app.services.local_client import LocalHeuristicClient
 from app.ui import dashboard, session
 from app.ui.tabs import assembly_tabs
 
@@ -25,6 +27,48 @@ class FakeSessionState(dict):
 
     def __setattr__(self, name, value):
         self[name] = value
+
+
+class FakeSpinner:
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class ScriptedDetailsClient(LLMClient):
+    name = "gemini"
+    model = "gemini-test"
+
+    def __init__(self):
+        self.calls = 0
+
+    @property
+    def is_ai(self) -> bool:
+        return True
+
+    def complete(self, *, system, messages, max_tokens=1500, temperature=0.0):
+        self.calls += 1
+        return LLMResponse(
+            text=(
+                "{"
+                '"patient_name":"Jane Smith",'
+                '"member_id":"JS-1",'
+                '"date_of_birth":null,'
+                '"diagnosis":"Rheumatoid Arthritis",'
+                '"icd10_codes":["M06.9"],'
+                '"requested_service":"Humira",'
+                '"cpt_codes":[],'
+                '"insurance_company":"Aetna",'
+                '"decision":"denied",'
+                '"denial_reason":"Step therapy not met.",'
+                '"physician_name":"Dr. Patel",'
+                '"confidence_score":0.94'
+                "}"
+            ),
+            model=self.model,
+        )
 
 
 @pytest.fixture
@@ -92,6 +136,116 @@ def test_selected_assembled_case_reaches_review_and_appeal_pipeline(
     assert appeal is not None
     assert "Humira" in appeal.letter_text
     assert service.get_case(case_id).appeal_letter == appeal
+
+
+def test_persisted_ai_review_keeps_reasoning_provenance(fake_state, service):
+    record = service.create_case("ai-review.txt")
+    service.attach_extraction(
+        record.case_id,
+        PatientCase(
+            diagnosis="Rheumatoid arthritis",
+            requested_service="Humira",
+            decision=Decision.DENIED,
+        ),
+    )
+    review = ReviewResult(
+        recommendation=Recommendation.DENY,
+        rationale="AI review.",
+        confidence_score=0.8,
+        guideline_id="GL-HUMIRA-001",
+        generated_by_ai=True,
+        review_backend="gemini",
+        review_model="gemini-test",
+    )
+    service.attach_review(record.case_id, review)
+    session.set_persisted_case_id(record.case_id)
+
+    loaded, used_ai = dashboard._get_or_run_review()
+
+    assert loaded == review
+    assert used_ai is True
+    assert session.get_review_used_ai() is True
+
+
+def test_forced_local_review_bypasses_configured_ai_client(
+    fake_state,
+    service,
+    monkeypatch,
+):
+    record = service.create_case("local-review.txt")
+    service.attach_extraction(
+        record.case_id,
+        PatientCase(
+            diagnosis="Rheumatoid arthritis",
+            requested_service="Humira",
+            decision=Decision.DENIED,
+            denial_reason="Step therapy not met: no methotrexate trial.",
+        ),
+    )
+    session.set_persisted_case_id(record.case_id)
+    monkeypatch.setattr(
+        dashboard,
+        "get_llm_client",
+        lambda: pytest.fail("local review should not ask for configured AI"),
+    )
+    monkeypatch.setattr(
+        dashboard.st,
+        "spinner",
+        lambda *args, **kwargs: FakeSpinner(),
+    )
+
+    review, used_ai = dashboard._get_or_run_review(force=True, mode="local")
+
+    assert review is not None
+    assert used_ai is False
+    assert review.generated_by_ai is False
+
+
+def test_ai_review_requires_ai_backend(fake_state, service, monkeypatch):
+    record = service.create_case("ai-review-missing-key.txt")
+    service.attach_extraction(
+        record.case_id,
+        PatientCase(
+            diagnosis="Rheumatoid arthritis",
+            requested_service="Humira",
+            decision=Decision.DENIED,
+        ),
+    )
+    session.set_persisted_case_id(record.case_id)
+    messages = []
+    monkeypatch.setattr(dashboard, "get_llm_client", lambda: LocalHeuristicClient())
+    monkeypatch.setattr(
+        dashboard.st,
+        "error",
+        lambda msg, *args, **kwargs: messages.append(msg),
+    )
+
+    review, used_ai = dashboard._get_or_run_review(force=True, mode="ai")
+
+    assert review is None
+    assert used_ai is False
+    assert any("AI reasoning is not configured" in message for message in messages)
+
+
+def test_patient_details_extraction_uses_gemini_preferred_client(
+    fake_state,
+    monkeypatch,
+):
+    client = ScriptedDetailsClient()
+    session.set_text(
+        "Patnt: Jane Smiht\nDx: Rheumatiod Artharitis\nRequested: Humira",
+        page_count=1,
+    )
+    monkeypatch.setattr(dashboard, "get_patient_details_client", lambda: client)
+    monkeypatch.setattr(dashboard.st, "spinner", lambda *args, **kwargs: FakeSpinner())
+
+    case = dashboard._get_or_extract_case(force=True)
+
+    assert case.patient_name == "Jane Smith"
+    assert case.diagnosis == "Rheumatoid Arthritis"
+    assert case.confidence_score == 0.94
+    assert session.get_extraction_meta().backend == "gemini"
+    assert client.calls == 1
 
 
 def test_assembly_success_refreshes_session_and_reruns(
@@ -220,7 +374,7 @@ def test_appeal_generation_error_is_rendered_without_crashing(
     session.set_review("REVIEW", used_ai=False)
     messages = []
 
-    class FakeSpinner:
+    class RaisingFakeSpinner:
         def __enter__(self):
             return None
 
@@ -234,7 +388,7 @@ def test_appeal_generation_error_is_rendered_without_crashing(
         def generate(self, _case, _review):
             raise AppealAgentError("Appeal blocked: No active insurance denial found.")
 
-    monkeypatch.setattr(dashboard.st, "spinner", lambda *args, **kwargs: FakeSpinner())
+    monkeypatch.setattr(dashboard.st, "spinner", lambda *args, **kwargs: RaisingFakeSpinner())
     monkeypatch.setattr(
         dashboard.st,
         "info",

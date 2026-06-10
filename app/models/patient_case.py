@@ -53,6 +53,16 @@ class FieldSource(BaseModel):
     quoted_text: Optional[str] = None
 
 
+class NormalizedField(BaseModel):
+    """Audit trail for a post-extraction normalized field."""
+
+    raw_value: Optional[str] = None
+    normalized_value: Optional[str] = None
+    source_evidence_ids: list[str] = Field(default_factory=list)
+    confidence_score: float = Field(default=1.0, ge=0.0, le=1.0)
+    method: str = Field(default="deterministic-normalizer")
+
+
 class PatientCase(BaseModel):
     """Structured healthcare data extracted from an insurance document."""
     patient_name: Optional[str] = Field(
@@ -104,6 +114,28 @@ class PatientCase(BaseModel):
     field_sources: dict[str, "FieldSource"] = Field(
         default_factory=dict,
         description="Optional per-field source attribution (field -> FieldSource).",
+    )
+    raw_fields: dict[str, object] = Field(
+        default_factory=dict,
+        description="Raw extracted values before post-extraction normalization.",
+    )
+    normalized_fields: dict[str, NormalizedField] = Field(
+        default_factory=dict,
+        description="Per-field normalization provenance.",
+    )
+    extraction_backend: Optional[str] = Field(
+        default=None, description="Backend/provider used for structured extraction."
+    )
+    extraction_model: Optional[str] = Field(
+        default=None, description="Model identifier used for structured extraction."
+    )
+    extraction_task: str = Field(
+        default="structured_extraction",
+        description="Provider-router task used for this extraction.",
+    )
+    safety_gate: dict = Field(
+        default_factory=dict,
+        description="Latest safety-gate outcome for this extracted case.",
     )
 
     # ------------------------------------------------------------------ #

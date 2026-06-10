@@ -67,6 +67,24 @@ class AuditEvent(BaseModel):
     event_type: AuditEventType = Field(..., description="Type of action.")
     actor: AuditActor = Field(default=AuditActor.SYSTEM)
     details: str = Field(default="", description="Human-readable details.")
+    previous_hash: Optional[str] = Field(
+        default=None, description="Hash of the previous audit event in the chain."
+    )
+    event_hash: Optional[str] = Field(
+        default=None, description="Hash of this audit event payload."
+    )
+    resource_type: Optional[str] = Field(
+        default=None, description="Audited resource type."
+    )
+    resource_id: Optional[str] = Field(
+        default=None, description="Audited resource identifier."
+    )
+    action: Optional[str] = Field(
+        default=None, description="Audited action name."
+    )
+    payload_hash: Optional[str] = Field(
+        default=None, description="Hash of the event details/payload."
+    )
 
     @field_validator("event_type", mode="before")
     @classmethod

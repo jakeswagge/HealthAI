@@ -97,6 +97,7 @@ def _build_case_summary(record: CaseRecord) -> str:
     if al:
         lines.append(f"- Appeal ID: {al.appeal_id}")
         lines.append(f"- Confidence: {al.confidence_score:.0%}")
+        lines.append(f"- Verification: {al.verification.status.value}")
         lines.append(f"- {al.summary()}")
     else:
         lines.append("- No appeal letter generated.")
@@ -396,6 +397,28 @@ def build_export_files(
         files["appeal_explanation.json"] = appeal_explanation.model_dump_json(indent=2)
     if traceability_chain is not None:
         files["traceability_chain.json"] = traceability_chain.model_dump_json(indent=2)
+
+    if (
+        record.appeal_letter is not None
+        and record.appeal_letter.verification.status.value != "NOT_RUN"
+    ):
+        files["appeal_verification.json"] = (
+            record.appeal_letter.verification.model_dump_json(indent=2)
+        )
+
+    safety = {
+        "patient_case": (
+            record.patient_case.safety_gate if record.patient_case else None
+        ),
+        "review_result": (
+            record.review_result.safety_gate if record.review_result else None
+        ),
+        "appeal_letter": (
+            record.appeal_letter.safety_gate if record.appeal_letter else None
+        ),
+    }
+    if any(value for value in safety.values()):
+        files["safety_gates.json"] = json.dumps(safety, indent=2)
 
     # Final Milestone: payer profile, operational health, validation report.
     if payer_profile is not None:

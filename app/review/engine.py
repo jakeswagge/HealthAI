@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import re
 
+from app.agents.normalization import normalize_clinical_text
 from app.guidelines.repository import (
     GuidelineRepository,
     get_default_repository,
@@ -583,7 +584,7 @@ class ClinicalReviewEngine:
             case.requested_service or "",
             " ".join(case.icd10_codes),
             " ".join(case.cpt_codes),
-            document_text or "",
+            normalize_clinical_text(document_text),
         ]
         return " \n ".join(parts).lower()
 
@@ -592,7 +593,7 @@ class ClinicalReviewEngine:
         # The denial reason is the primary deficiency signal. We do NOT fold in
         # the full document here so that supporting evidence is not mistaken for
         # a deficiency.
-        return (case.denial_reason or "").lower()
+        return normalize_clinical_text(case.denial_reason).lower()
 
     # ------------------------------------------------------------------ #
     # Core review

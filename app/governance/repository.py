@@ -37,6 +37,11 @@ class GovernanceSettingsRepository:
             require_human_review_before_export=bool(
                 row["require_human_review_before_export"]
             ),
+            confidence_threshold=row["confidence_threshold"],
+            block_autonomous_denials=bool(row["block_autonomous_denials"]),
+            require_verified_appeal_claims=bool(
+                row["require_verified_appeal_claims"]
+            ),
         )
 
     def save(self, settings: GovernanceSettings) -> GovernanceSettings:
@@ -46,8 +51,9 @@ class GovernanceSettingsRepository:
             INSERT OR REPLACE INTO governance_settings
                 (settings_id, validated_evidence_mode, allow_unreviewed_evidence,
                  minimum_quality_score, require_conflict_resolution,
-                 require_human_review_before_export, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+                 require_human_review_before_export, confidence_threshold,
+                 block_autonomous_denials, require_verified_appeal_claims, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             """,
             (
                 _SETTINGS_ID,
@@ -56,6 +62,9 @@ class GovernanceSettingsRepository:
                 settings.minimum_quality_score,
                 int(settings.require_conflict_resolution),
                 int(settings.require_human_review_before_export),
+                settings.confidence_threshold,
+                int(settings.block_autonomous_denials),
+                int(settings.require_verified_appeal_claims),
             ),
         )
         self.conn.commit()

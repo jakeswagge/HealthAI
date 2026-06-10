@@ -99,6 +99,7 @@ from app.models.governance import (
     GovernanceComplianceReport,
     GovernanceSettings,
 )
+from app.models.safety import SafetyGateDecision
 from app.models.ocr_result import DEFAULT_OCR_CONFIDENCE_THRESHOLD, OCRPageResult
 from app.models.operational_health import OperationalHealthReport
 from app.models.patient_case import PatientCase
@@ -187,8 +188,16 @@ class CaseService:
             workbench=self.workbench,
             audit=self.audit,
         )
-        self._review = ReviewService(lifecycle=self._lifecycle, audit=self.audit)
-        self._appeal = AppealService(lifecycle=self._lifecycle, audit=self.audit)
+        self._review = ReviewService(
+            lifecycle=self._lifecycle,
+            audit=self.audit,
+            settings_provider=self.get_governance_settings,
+        )
+        self._appeal = AppealService(
+            lifecycle=self._lifecycle,
+            audit=self.audit,
+            settings_provider=self.get_governance_settings,
+        )
         self._resolution = ResolutionService(
             lifecycle=self._lifecycle,
             resolution_engine=self.resolution_engine,
@@ -384,6 +393,19 @@ class CaseService:
         """Run a governance compliance check on a case (audited)."""
         return self._governance.check_compliance(case_id, settings)
 
+    def export_safety_gate(
+        self,
+        case_id: str,
+        settings: GovernanceSettings | None = None,
+    ) -> SafetyGateDecision:
+        """Return whether a case is safe to export under active governance."""
+        from app.governance.safety import SafetyGate
+
+        settings = settings or self.get_governance_settings()
+        record = self._lifecycle.require(case_id)
+        compliance = self.check_compliance(case_id, settings)
+        return SafetyGate(settings).export(record, compliance)
+
     def quality_analytics(self) -> QualityAnalytics:
         """Compute org-wide quality + workflow analytics."""
         return self._analytics.quality_analytics()
@@ -575,6 +597,13 @@ class CaseService:
 
     def attach_appeal(self, case_id: str, appeal: AppealLetter) -> CaseRecord:
         """Attach appeal output, move to APPEAL_GENERATED then PENDING review."""
+        evidence = self.evidence.for_case(case_id)
+        if evidence:
+            from app.appeals.verifier import AppealVerifier
+
+            docs = self.documents.for_case(case_id)
+            context = self.assembly.synthesize_from_evidence(case_id, evidence, docs)
+            appeal = AppealVerifier().verify(appeal, context)
         return self._appeal.attach_appeal(case_id, appeal)
 
     def assign_reviewer(self, case_id: str, reviewer_name: str) -> CaseRecord:
@@ -595,7 +624,9 @@ class CaseService:
 
     def mark_exported(self, case_id: str) -> CaseRecord:
         """Record that a case's export package was generated."""
-        return self._appeal.mark_exported(case_id)
+        settings = self.get_governance_settings()
+        compliance = self.check_compliance(case_id, settings)
+        return self._appeal.mark_exported(case_id, settings, compliance)
 
     # ------------------------------------------------------------------ #
     # Accessors

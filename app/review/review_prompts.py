@@ -14,6 +14,8 @@ from app.models.clinical_guideline import ClinicalGuideline
 from app.models.patient_case import PatientCase
 
 _REVIEW_SCHEMA_EXAMPLE = {
+    "guideline_id": "matched supplied guideline id, or null if none applies",
+    "service_name": "matched supplied service name, or null if none applies",
     "recommendation": "one of: APPROVE | DENY | INSUFFICIENT_INFORMATION",
     "matched_criteria": ["descriptions of criteria that ARE satisfied"],
     "missing_criteria": ["descriptions of criteria that are NOT satisfied"],
@@ -120,6 +122,49 @@ Reminders:
 """
 
 
+def build_review_selection_prompt(
+    case: PatientCase,
+    guidelines: list[ClinicalGuideline],
+    document_text: str | None = None,
+) -> str:
+    """Build a prompt that lets AI select from supplied guidelines."""
+    schema = json.dumps(_REVIEW_SCHEMA_EXAMPLE, indent=2)
+    guideline_library = ",\n".join(_guideline_block(g) for g in guidelines)
+    doc_section = ""
+    if document_text:
+        snippet = document_text.strip()[:4000]
+        doc_section = f"\nSOURCE DOCUMENT (supporting evidence, may be partial):\n\"\"\"\n{snippet}\n\"\"\"\n"
+
+    return f"""\
+Review the following prior-authorization case against the supplied clinical
+guideline library.
+
+Choose the single most applicable guideline ONLY from the supplied library.
+If none of the supplied guidelines applies to the requested service/diagnosis,
+return guideline_id=null, service_name=null, recommendation=INSUFFICIENT_INFORMATION,
+and explain that no applicable local guideline was available.
+
+CLINICAL GUIDELINE LIBRARY:
+[
+{guideline_library}
+]
+
+PATIENT CASE (structured):
+{_case_block(case)}
+{doc_section}
+Produce a single JSON object with EXACTLY these keys:
+
+{schema}
+
+Reminders:
+- Use only criteria from the selected supplied guideline.
+- Do not invent guideline ids, services, criteria, or clinical facts.
+- If the denial reason indicates an unmet requirement, that criterion is missing.
+- Prefer INSUFFICIENT_INFORMATION when evidence is incomplete.
+- Valid JSON only. No code fences or extra text.
+"""
+
+
 def build_review_messages(
     case: PatientCase,
     guideline: ClinicalGuideline,
@@ -130,5 +175,19 @@ def build_review_messages(
         {
             "role": "user",
             "content": build_review_user_prompt(case, guideline, document_text),
+        }
+    ]
+
+
+def build_review_selection_messages(
+    case: PatientCase,
+    guidelines: list[ClinicalGuideline],
+    document_text: str | None = None,
+) -> list[dict[str, str]]:
+    """Build chat messages for AI-guided guideline selection + review."""
+    return [
+        {
+            "role": "user",
+            "content": build_review_selection_prompt(case, guidelines, document_text),
         }
     ]

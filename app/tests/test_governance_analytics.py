@@ -184,9 +184,19 @@ class TestCompliance:
 
     def test_export_without_human_review_flagged(self, service):
         case_id = _scored_case(service)
+        service.update_governance_settings(
+            GovernanceSettings(
+                confidence_threshold=0.0,
+                require_human_review_before_export=False,
+            )
+        )
         service.mark_exported(case_id)
         report = service.check_compliance(
-            case_id, GovernanceSettings(require_human_review_before_export=True)
+            case_id,
+            GovernanceSettings(
+                require_human_review_before_export=True,
+                confidence_threshold=0.0,
+            ),
         )
         assert any(v.code == "EXPORT_WITHOUT_HUMAN_REVIEW" for v in report.violations)
 
@@ -205,7 +215,11 @@ class TestCompliance:
         service.resolve_conflict(case_id, dx.conflict_id, "diagnosis",
                                  "Rheumatoid arthritis", ["Osteoarthritis"], "Rev")
         report = service.check_compliance(
-            case_id, GovernanceSettings(require_conflict_resolution=True)
+            case_id,
+            GovernanceSettings(
+                require_conflict_resolution=True,
+                confidence_threshold=0.0,
+            ),
         )
         # No appeal, no export, conflict resolved, no min-quality -> compliant.
         assert report.is_compliant

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from app.models.conflict_report import ConflictReport
 from app.models.evidence_quality import EvidenceQualityAssessment
+from app.models.review_result import Recommendation
 from app.models.governance import (
     ComplianceViolation,
     EvidenceMode,
@@ -33,6 +34,9 @@ class GovernanceComplianceChecker:
         has_appeal: bool,
         has_human_review: bool,
         was_exported: bool,
+        patient_case=None,
+        review_result=None,
+        appeal_letter=None,
         quality: list[EvidenceQualityAssessment],
         conflict_report: ConflictReport | None,
         unresolved_conflict_fact_types: list[str] | None = None,
@@ -42,7 +46,53 @@ class GovernanceComplianceChecker:
         unresolved = unresolved_conflict_fact_types or []
         violations: list[ComplianceViolation] = []
 
-        quality_by_id = {q.evidence_id: q for q in quality}
+        # 0. Pilot confidence threshold for generated artifacts.
+        for label, artifact in (
+            ("EXTRACTION", patient_case),
+            ("REVIEW", review_result),
+            ("APPEAL", appeal_letter),
+        ):
+            if artifact is None:
+                continue
+            confidence = float(getattr(artifact, "confidence_score", 0.0) or 0.0)
+            if confidence < settings.confidence_threshold:
+                violations.append(
+                    ComplianceViolation(
+                        code=f"LOW_CONFIDENCE_{label}",
+                        severity="HIGH",
+                        description=(
+                            f"{label.title()} confidence {confidence:.2f} is below "
+                            f"threshold {settings.confidence_threshold:.2f}."
+                        ),
+                    )
+                )
+
+        if (
+            settings.block_autonomous_denials
+            and review_result is not None
+            and review_result.recommendation is Recommendation.DENY
+            and not has_human_review
+        ):
+            violations.append(
+                ComplianceViolation(
+                    code="AUTONOMOUS_DENIAL_BLOCKED",
+                    severity="HIGH",
+                    description="Denial recommendation requires human sign-off.",
+                )
+            )
+
+        if (
+            settings.require_verified_appeal_claims
+            and appeal_letter is not None
+            and not appeal_letter.verification.passed
+        ):
+            violations.append(
+                ComplianceViolation(
+                    code="APPEAL_VERIFICATION_NOT_PASSED",
+                    severity="HIGH",
+                    description="Appeal claims have not passed evidence verification.",
+                )
+            )
 
         # 1. Appeal generated with weak evidence.
         if has_appeal:
