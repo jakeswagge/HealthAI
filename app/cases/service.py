@@ -192,6 +192,8 @@ class CaseService:
             lifecycle=self._lifecycle,
             audit=self.audit,
             settings_provider=self.get_governance_settings,
+            evidence_repository=self.evidence,
+            workbench=self.workbench,
         )
         self._appeal = AppealService(
             lifecycle=self._lifecycle,

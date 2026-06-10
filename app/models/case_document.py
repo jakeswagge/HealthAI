@@ -43,6 +43,59 @@ class DocumentCategory(str, Enum):
     OTHER = "OTHER"
 
 
+class DocumentSectionType(str, Enum):
+    """Section-level category inside a case document packet."""
+
+    ADMINISTRATIVE = "administrative"
+    CLAIM_OR_DENIAL = "claim_or_denial"
+    CLINICAL_HISTORY = "clinical_history"
+    LABS = "labs"
+    IMAGING = "imaging"
+    PROCEDURE_NOTE = "procedure_note"
+    PAYER_POLICY = "payer_policy"
+    OTHER = "other"
+
+
+class DocumentSection(BaseModel):
+    """A derived page-range section within a :class:`CaseDocument`.
+
+    Sections are intentionally not persisted in v1. They preserve page ranges
+    for extraction/review while keeping the existing document/evidence schema.
+    """
+
+    section_id: str
+    case_id: str
+    document_id: str
+    section_type: DocumentSectionType = DocumentSectionType.OTHER
+    page_start: int = Field(default=1, ge=1)
+    page_end: int = Field(default=1, ge=1)
+    text: str = ""
+    confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
+
+    @field_validator("section_type", mode="before")
+    @classmethod
+    def _coerce_section_type(cls, v):
+        if isinstance(v, DocumentSectionType):
+            return v
+        if v is None:
+            return DocumentSectionType.OTHER
+        try:
+            return DocumentSectionType(str(v).strip().lower())
+        except ValueError:
+            return DocumentSectionType.OTHER
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def _coerce_text(cls, v):
+        return "" if v is None else str(v)
+
+    def pages(self) -> list[str]:
+        """Return section text split into page chunks."""
+        if not self.text:
+            return [""]
+        return self.text.split(PAGE_DELIMITER)
+
+
 # Keyword hints used to classify a document by filename / content.
 _CATEGORY_HINTS: list[tuple[DocumentCategory, tuple[str, ...]]] = [
     (DocumentCategory.DENIAL_LETTER, ("denial", "adverse determination", "denied", "notice of adverse")),

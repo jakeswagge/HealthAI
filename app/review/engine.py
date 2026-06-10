@@ -37,6 +37,7 @@ from app.models.clinical_guideline import ClinicalGuideline, GuidelineCriterion
 from app.models.patient_case import PatientCase
 from app.models.review_result import (
     CriterionEvaluation,
+    CriterionStatus,
     Recommendation,
     ReviewResult,
 )
@@ -199,6 +200,18 @@ _STEP_SUCCESS_CUES = (
     "trial",
     "tried",
     "completed",
+    "inadequate response",
+    "persistent symptoms",
+    "despite",
+    "ineffective",
+    "refractory",
+    "uncontrolled",
+    "intolerant",
+    "intolerance",
+)
+_STEP_STRONG_SUCCESS_CUES = (
+    "failed",
+    "failure",
     "inadequate response",
     "persistent symptoms",
     "despite",
@@ -371,6 +384,105 @@ def _signal_note(prefix: str, signal: ClinicalSignal) -> str:
     return f"{prefix} ('{signal.text}'{suffix}; evidence='{evidence}')."
 
 
+def _normalized_value(case: PatientCase, fact_type: str) -> str | None:
+    field = (case.normalized_fields or {}).get(fact_type)
+    if field is None:
+        return None
+    value = field.normalized_value or field.raw_value
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _normalized_support_text(case: PatientCase) -> str:
+    """Convert normalized evidence facts into review-friendly text phrases."""
+    parts: list[str] = []
+    for fact in ("diagnosis", "requested_service", "provider_role"):
+        value = _normalized_value(case, fact)
+        if value:
+            parts.append(value)
+
+    tb_result = _normalized_value(case, "tb_screen_result")
+    if tb_result:
+        parts.append(f"{tb_result} TB screen result")
+        if tb_result.lower() == "negative":
+            parts.append("negative TB screening")
+        elif tb_result.lower() == "positive":
+            parts.append("positive TB screening")
+
+    specialist = _normalized_value(case, "specialist_status")
+    if specialist and specialist.lower() == "documented":
+        parts.extend(("specialist documented", "rheumatology specialist"))
+
+    step = _normalized_value(case, "step_therapy_status")
+    if step:
+        parts.append(f"step therapy status {step}")
+        if step.lower() == "failed":
+            parts.extend(("failed methotrexate", "methotrexate failure"))
+        elif step.lower() == "refused":
+            parts.append("methotrexate refused")
+        elif step.lower() == "absent":
+            parts.append("no methotrexate trial")
+
+    return " \n ".join(parts)
+
+
+def _normalized_deficiency_text(case: PatientCase) -> str:
+    parts: list[str] = []
+    prior_auth = _normalized_value(case, "prior_auth_status")
+    if prior_auth and prior_auth.lower() == "missing":
+        parts.append("missing prior authorization")
+    claim_reason = _normalized_value(case, "claim_denial_reason")
+    if claim_reason:
+        parts.append(claim_reason)
+    return " \n ".join(parts)
+
+
+def _source_ids_for(case: PatientCase, fact_types: tuple[str, ...]) -> list[str]:
+    ids: list[str] = []
+    for fact in fact_types:
+        source = (case.field_sources or {}).get(fact)
+        if source and source.evidence_id and source.evidence_id not in ids:
+            ids.append(source.evidence_id)
+        normalized = (case.normalized_fields or {}).get(fact)
+        if normalized:
+            for ev_id in normalized.source_evidence_ids:
+                if ev_id not in ids:
+                    ids.append(ev_id)
+    return ids
+
+
+def _evidence_ids_for_criterion(case: PatientCase, crit: GuidelineCriterion) -> list[str]:
+    marker = f"{crit.id} {crit.description}".lower()
+    facts: list[str] = []
+    if "diagnosis" in marker or "rheumatoid arthritis" in marker:
+        facts.append("diagnosis")
+    if "specialist" in marker or "rheumatologist" in marker:
+        facts.extend(("specialist_status", "provider_role"))
+    if "tb_screen" in marker or "tuberculosis" in marker:
+        facts.append("tb_screen_result")
+    if "dmard" in marker or "methotrexate" in marker or "step_therapy" in marker:
+        facts.append("step_therapy_status")
+    return _source_ids_for(case, tuple(facts))
+
+
+def _criterion_status(status: str) -> CriterionStatus:
+    if status == "met":
+        return CriterionStatus.MET
+    if status == "unmet":
+        return CriterionStatus.NOT_MET
+    return CriterionStatus.UNKNOWN
+
+
+def _criterion_confidence(status: str, evidence_ids: list[str]) -> float:
+    if status == "met":
+        return 0.9 if evidence_ids else 0.82
+    if status == "unmet":
+        return 0.82
+    return 0.5
+
+
 def _current_diagnosis_values(
     signals: list[ClinicalSignal],
 ) -> list[tuple[str, ClinicalSignal]]:
@@ -489,19 +601,29 @@ def _evaluate_with_medspacy(
         absent = next(
             (
                 s for s in step_support
-                if s.is_negated
-                or _has_any(s.sentence, _STEP_ABSENCE_CUES)
-                or step_therapy_status(s) == "absent"
+                if not _has_any(s.sentence, _STEP_STRONG_SUCCESS_CUES)
+                and (
+                    s.is_negated
+                    or _has_any(s.sentence, _STEP_ABSENCE_CUES)
+                    or step_therapy_status(s) == "absent"
+                )
             ),
             None,
         )
         met = next(
             (
                 s for s in step_support
-                if step_therapy_status(s) == "failed"
+                if (
+                    (
+                        step_therapy_status(s) == "failed"
+                        or _has_any(s.sentence, _STEP_STRONG_SUCCESS_CUES)
+                    )
+                    and not _has_any(s.sentence, _STEP_ABSENCE_CUES)
+                )
                 or (
                     s.is_current_affirmed
                     and _has_any(s.sentence, _STEP_SUCCESS_CUES)
+                    and not _has_any(s.sentence, _STEP_ABSENCE_CUES)
                 )
             ),
             None,
@@ -585,6 +707,7 @@ class ClinicalReviewEngine:
             " ".join(case.icd10_codes),
             " ".join(case.cpt_codes),
             normalize_clinical_text(document_text),
+            _normalized_support_text(case),
         ]
         return " \n ".join(parts).lower()
 
@@ -593,7 +716,11 @@ class ClinicalReviewEngine:
         # The denial reason is the primary deficiency signal. We do NOT fold in
         # the full document here so that supporting evidence is not mistaken for
         # a deficiency.
-        return normalize_clinical_text(case.denial_reason).lower()
+        parts = [
+            normalize_clinical_text(case.denial_reason),
+            _normalized_deficiency_text(case),
+        ]
+        return " \n ".join(parts).lower()
 
     # ------------------------------------------------------------------ #
     # Core review
@@ -631,15 +758,34 @@ class ClinicalReviewEngine:
                 support_signals=support_signals,
                 deficiency_signals=deficiency_signals,
             )
+            criterion_evidence_ids = (
+                _evidence_ids_for_criterion(case, crit) if status == "met" else []
+            )
+            rule_missing = [] if status == "met" else [
+                (
+                    f"Evidence for: {crit.description}"
+                    if status == "unmet"
+                    else f"Documentation needed to establish: {crit.description}"
+                )
+            ]
             evaluation = CriterionEvaluation(
                 id=crit.id,
                 description=crit.description,
                 met=(status == "met"),
                 note=note,
+                status=_criterion_status(status),
+                supporting_evidence_ids=criterion_evidence_ids,
+                missing_evidence=rule_missing,
+                reasoning=note,
+                confidence_score=_criterion_confidence(status, criterion_evidence_ids),
+                review_backend="local",
             )
             if evaluation.note and "context=negated" in evaluation.note.lower():
                 evaluation.met = False
                 status = "unmet"
+                evaluation.status = CriterionStatus.NOT_MET
+                evaluation.supporting_evidence_ids = []
+                evaluation.missing_evidence = [f"Evidence for: {crit.description}"]
             detail.append(evaluation)
 
             if evaluation.met:
@@ -704,6 +850,8 @@ class ClinicalReviewEngine:
             recommended_actions=recommended_actions,
             contraindications_found=contraindications_found,
             criteria_detail=detail,
+            generated_by_ai=False,
+            review_backend="local",
         )
 
     # ------------------------------------------------------------------ #
@@ -867,4 +1015,6 @@ class ClinicalReviewEngine:
                 "Route to a human reviewer.",
                 "Consider adding a guideline for this service to the library.",
             ],
+            generated_by_ai=False,
+            review_backend="local",
         )

@@ -22,6 +22,19 @@ _REVIEW_SCHEMA_EXAMPLE = {
     "missing_evidence": ["specific evidence/documentation still needed"],
     "recommended_actions": ["concrete next steps for the provider/reviewer"],
     "contraindications_found": ["any contraindications detected, else []"],
+    "criteria_detail": [
+        {
+            "id": "criterion id from the supplied guideline",
+            "description": "criterion description from the supplied guideline",
+            "met": "boolean",
+            "status": "one of: met | not_met | unknown",
+            "supporting_evidence_ids": ["EvidenceReference ids, if supplied"],
+            "missing_evidence": ["rule-specific missing evidence, if any"],
+            "reasoning": "brief rule-level reasoning grounded in the evidence",
+            "confidence_score": "float between 0.0 and 1.0",
+            "review_backend": "model/backend name",
+        }
+    ],
     "rationale": "concise explanation of the decision",
     "confidence_score": "float between 0.0 and 1.0",
 }
@@ -84,6 +97,15 @@ def _case_block(case: PatientCase) -> str:
         "decision": case.decision.value,
         "denial_reason": case.denial_reason,
         "physician_name": case.physician_name,
+        "normalized_clinical_facts": {
+            fact: field.normalized_value or field.raw_value
+            for fact, field in (case.normalized_fields or {}).items()
+        },
+        "field_evidence_ids": {
+            fact: source.evidence_id
+            for fact, source in (case.field_sources or {}).items()
+            if source.evidence_id
+        },
     }
     return json.dumps(payload, indent=2)
 
@@ -116,6 +138,9 @@ Produce a single JSON object with EXACTLY these keys:
 
 Reminders:
 - Use only the guideline's listed criteria.
+- Include one criteria_detail object for every required guideline criterion.
+- Use only supplied evidence ids in supporting_evidence_ids. If no id is
+  supplied for a criterion, return an empty list rather than inventing one.
 - If the denial reason indicates an unmet requirement, that criterion is missing.
 - Prefer INSUFFICIENT_INFORMATION when evidence is incomplete.
 - Valid JSON only. No code fences or extra text.
@@ -158,6 +183,10 @@ Produce a single JSON object with EXACTLY these keys:
 
 Reminders:
 - Use only criteria from the selected supplied guideline.
+- Include one criteria_detail object for every required criterion in the
+  selected guideline.
+- Use only supplied evidence ids in supporting_evidence_ids. If no id is
+  supplied for a criterion, return an empty list rather than inventing one.
 - Do not invent guideline ids, services, criteria, or clinical facts.
 - If the denial reason indicates an unmet requirement, that criterion is missing.
 - Prefer INSUFFICIENT_INFORMATION when evidence is incomplete.

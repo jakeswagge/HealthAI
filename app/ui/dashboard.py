@@ -44,11 +44,13 @@ from app.extraction.validation import ValidationError
 from app.models.document import SUPPORTED_EXTENSIONS
 from app.models.patient_case import Decision
 from app.models.review_result import Recommendation
+from app.review.comparison import compare_reviews
 from app.review.review_agent import GuidelineReviewAgent
 from app.services.factory import (
     describe_active_backend,
     get_llm_client,
 )
+from app.services.llm_client import LLMError
 from app.services.local_client import LocalHeuristicClient
 from app.services.provider_router import (
     AITask,
@@ -243,11 +245,11 @@ def _get_or_extract_case(force: bool = False):
 def _get_or_run_review(force: bool = False, mode: str = "auto"):
     """Return the cached review, running the review agent only if needed."""
     mode = mode.lower().strip()
-    if mode not in {"auto", "ai", "local"}:
+    if mode not in {"auto", "ai", "gemini", "local", "compare"}:
         raise ValueError(f"Unknown review mode: {mode!r}")
 
     record = _selected_case_record()
-    explicit_mode = mode in {"ai", "local"}
+    explicit_mode = mode in {"ai", "gemini", "local", "compare"}
     if record and record.review_result is not None and not force and not explicit_mode:
         used_ai = bool(getattr(record.review_result, "generated_by_ai", False))
         session.set_review(record.review_result, used_ai=used_ai)
@@ -265,9 +267,75 @@ def _get_or_run_review(force: bool = False, mode: str = "auto"):
     if case is None:
         return None, False
 
+    if mode == "compare":
+        try:
+            gemini_client = get_llm_client(force="gemini")
+        except LLMError as exc:
+            st.error(
+                "Gemini clinical reasoning is not configured. Set "
+                "`GEMINI_API_KEY` or `GOOGLE_API_KEY`, then rerun compare mode. "
+                f"Details: {exc}"
+            )
+            return None, False
+        if not gemini_client.is_ai:
+            st.error(
+                "Gemini clinical reasoning is not available. Set `GEMINI_API_KEY` "
+                "or `GOOGLE_API_KEY`, then rerun compare mode."
+            )
+            return None, False
+
+        with st.spinner("Running local and Gemini clinical reviews..."):
+            local_review = GuidelineReviewAgent(
+                llm_client=LocalHeuristicClient()
+            ).review(case, text)
+            ai_review = GuidelineReviewAgent(llm_client=gemini_client).review(case, text)
+
+        if not ai_review.used_ai:
+            st.error(
+                "Gemini did not produce a valid AI review, so compare mode did "
+                "not replace the current review."
+            )
+            return None, False
+
+        known_evidence_ids = None
+        if record:
+            known_evidence_ids = {
+                ev.evidence_id for ev in get_case_service().list_evidence(record.case_id)
+            }
+        comparison = compare_reviews(
+            local_review.result,
+            ai_review.result,
+            known_evidence_ids=known_evidence_ids,
+        )
+        ai_review.result.safety_gate = {
+            **(ai_review.result.safety_gate or {}),
+            "comparison": comparison.as_dict(),
+        }
+        session.set_review(ai_review.result, ai_review.used_ai)
+        if record and record.patient_case is not None:
+            get_case_service().attach_review(record.case_id, ai_review.result)
+        return ai_review.result, ai_review.used_ai
+
     if mode == "local":
         llm_client = LocalHeuristicClient()
         spinner_label = "Running local rule-based clinical review..."
+    elif mode == "gemini":
+        try:
+            llm_client = get_llm_client(force="gemini")
+        except LLMError as exc:
+            st.error(
+                "Gemini clinical reasoning is not configured. Set "
+                "`GEMINI_API_KEY` or `GOOGLE_API_KEY`, then rerun Gemini reasoning. "
+                f"Details: {exc}"
+            )
+            return None, False
+        if not llm_client.is_ai:
+            st.error(
+                "Gemini clinical reasoning is not available. Set `GEMINI_API_KEY` "
+                "or `GOOGLE_API_KEY`, then rerun Gemini reasoning."
+            )
+            return None, False
+        spinner_label = "Running Gemini clinical review..."
     else:
         llm_client = get_client_for_task(AITask.CLINICAL_REASONING)
         if mode == "ai" and not llm_client.is_ai:
@@ -559,14 +627,14 @@ def _render_clinical_review_tab() -> None:
         if record and record.review_result is not None
         else session.get_review()
     )
-    col_ai, col_local, col_clear = st.columns(3)
+    col_ai, col_local, col_compare, col_clear = st.columns(4)
     run_ai = col_ai.button(
-        "AI reasoning",
+        "Gemini reasoning",
         type="primary",
         key="run_review_ai",
         help=(
             "Extracts the case if needed, then runs clinical review using the "
-            "configured hosted AI backend."
+            "Gemini hosted AI backend."
         ),
     )
     run_local = col_local.button(
@@ -577,6 +645,14 @@ def _render_clinical_review_tab() -> None:
             "rule engine with no AI backend call."
         ),
     )
+    run_compare = col_compare.button(
+        "Compare review",
+        key="run_review_compare",
+        help=(
+            "Runs both deterministic local review and Gemini review, then logs "
+            "material disagreements for safety."
+        ),
+    )
     clear_review = col_clear.button(
         "Clear review",
         key="clear_review",
@@ -584,34 +660,46 @@ def _render_clinical_review_tab() -> None:
         help="Clears the cached review so no previous result is shown.",
     )
 
-    if run_ai or run_local or clear_review:
+    if run_ai or run_local or run_compare or clear_review:
         session.invalidate_review()
 
     if (
         cached_review is None
         and not run_ai
         and not run_local
+        and not run_compare
         and not _database_case_ready()
     ):
         with st.expander("Preview extracted text"):
             st.text(text[:2000])
-        st.info("Choose **AI reasoning** or **Local rule review** to analyze this document.")
+        st.info(
+            "Choose **Gemini reasoning**, **Local rule review**, or "
+            "**Compare review** to analyze this document."
+        )
         return
 
     case = _get_or_extract_case(force=False)
     if case is None:
         return
 
-    if clear_review and not run_ai and not run_local:
-        st.info("Review cleared. Choose **AI reasoning** or **Local rule review** to run it again.")
+    if clear_review and not run_ai and not run_local and not run_compare:
+        st.info(
+            "Review cleared. Choose **Gemini reasoning**, **Local rule review**, "
+            "or **Compare review** to run it again."
+        )
         return
 
-    review_mode = "ai" if run_ai else "local" if run_local else "auto"
-    result, used_ai = _get_or_run_review(force=(run_ai or run_local), mode=review_mode)
+    review_mode = (
+        "compare" if run_compare else "gemini" if run_ai else "local" if run_local else "auto"
+    )
+    result, used_ai = _get_or_run_review(
+        force=(run_ai or run_local or run_compare),
+        mode=review_mode,
+    )
     if result is None:
         return
 
-    if cached_review is not None and not run_ai and not run_local:
+    if cached_review is not None and not run_ai and not run_local and not run_compare:
         st.caption("Showing cached review (no new AI backend call was made).")
 
     _render_recommendation_banner(result.recommendation)
@@ -626,6 +714,25 @@ def _render_clinical_review_tab() -> None:
         st.warning("Safety gate: human review required.")
         for reason in gate.get("reasons", []):
             st.markdown(f"- {reason}")
+    comparison = gate.get("comparison") or {}
+    if comparison:
+        with st.expander("Compare mode results"):
+            st.markdown(
+                f"**Local:** {comparison.get('deterministic_recommendation', 'unknown')}  "
+                f"**Gemini:** {comparison.get('ai_recommendation', 'unknown')}"
+            )
+            material = comparison.get("material_disagreements") or []
+            non_material = comparison.get("non_material_differences") or []
+            if material:
+                st.warning("Material disagreement logged for human review.")
+                for item in material:
+                    st.markdown(f"- {item}")
+            elif non_material:
+                st.info("Only non-material differences were found.")
+                for item in non_material:
+                    st.markdown(f"- {item}")
+            else:
+                st.success("No meaningful disagreement found.")
 
     with st.expander("Patient case used for review"):
         _render_patient_summary(case)

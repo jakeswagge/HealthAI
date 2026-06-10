@@ -19,6 +19,7 @@ reviewer resolution through the existing workflows unchanged.
 from __future__ import annotations
 
 from app.evidence.extractor import EvidenceExtractor
+from app.ingestion.classifier import DocumentClassifier
 from app.models.case_document import CaseDocument
 from app.models.evidence_reference import EvidenceReference
 from app.models.ocr_result import OCRPageResult
@@ -29,6 +30,7 @@ class VisionEvidenceExtractor:
 
     def __init__(self, base_extractor: EvidenceExtractor | None = None) -> None:
         self._extractor = base_extractor or EvidenceExtractor()
+        self._classifier = DocumentClassifier()
 
     def extract(
         self,
@@ -51,10 +53,19 @@ class VisionEvidenceExtractor:
             page_refs = self._extractor._extract_page(  # noqa: SLF001 - intentional reuse
                 document, page.page_number, page.raw_text
             )
+            section_type, _ = self._classifier.classify_section(
+                page.raw_text,
+                filename=document.filename,
+                document_type=document.document_type,
+            )
             for ref in page_refs:
                 # Blend OCR confidence so OCR uncertainty is never hidden.
                 ref.confidence_score = round(
                     ref.confidence_score * page.confidence, 4
+                )
+                ref.section_label = _merge_section_label(
+                    section_type.value,
+                    ref.section_label,
                 )
                 refs.append(ref)
         return refs
@@ -73,7 +84,22 @@ class VisionEvidenceExtractor:
             page_refs = self._extractor._extract_page(  # noqa: SLF001
                 document, page_number, text
             )
+            section_type, _ = self._classifier.classify_section(
+                text,
+                filename=document.filename,
+                document_type=document.document_type,
+            )
             for ref in page_refs:
                 ref.confidence_score = round(ref.confidence_score * ocr_confidence, 4)
+                ref.section_label = _merge_section_label(
+                    section_type.value,
+                    ref.section_label,
+                )
                 refs.append(ref)
         return refs
+
+
+def _merge_section_label(section_type: str, label: str | None) -> str:
+    if label:
+        return f"{section_type}: {label}"
+    return section_type

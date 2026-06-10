@@ -28,7 +28,12 @@ from app.guidelines.repository import (
     get_default_repository,
 )
 from app.models.patient_case import PatientCase
-from app.models.review_result import Recommendation, ReviewResult
+from app.models.review_result import (
+    CriterionEvaluation,
+    CriterionStatus,
+    Recommendation,
+    ReviewResult,
+)
 from app.review.engine import ClinicalReviewEngine
 from app.review.review_prompts import (
     REVIEW_SYSTEM_PROMPT,
@@ -262,6 +267,11 @@ class GuidelineReviewAgent:
                     ]
                 if service_name and not result.service_name:
                     result.service_name = service_name
+                self._ensure_criteria_detail(
+                    result,
+                    guideline=guideline,
+                    backend=self.backend_name,
+                )
 
                 return ReviewAgentResult(
                     result=result,
@@ -313,3 +323,84 @@ class GuidelineReviewAgent:
         result.review_model = model
         result.reasoning_backend = backend if used_ai else None
         result.reasoning_model = model if used_ai else None
+        for detail in result.criteria_detail:
+            if not detail.review_backend:
+                detail.review_backend = backend
+
+    @staticmethod
+    def _ensure_criteria_detail(
+        result: ReviewResult,
+        *,
+        guideline,
+        backend: str,
+    ) -> None:
+        """Ensure AI/local review has one rule-level row per criterion."""
+        if guideline is None:
+            for detail in result.criteria_detail:
+                if not detail.review_backend:
+                    detail.review_backend = backend
+                if not detail.reasoning and detail.note:
+                    detail.reasoning = detail.note
+            return
+
+        by_id = {detail.id: detail for detail in result.criteria_detail}
+        matched = {_norm_text(item) for item in result.matched_criteria}
+        missing = {_norm_text(item) for item in result.missing_criteria}
+
+        ordered: list[CriterionEvaluation] = []
+        for criterion in guideline.required_criteria:
+            detail = by_id.get(criterion.id)
+            description_key = _norm_text(criterion.description)
+            if detail is None:
+                if description_key in matched:
+                    status = CriterionStatus.MET
+                    note = "Criterion was listed as satisfied by the reviewer."
+                    missing_evidence: list[str] = []
+                elif description_key in missing:
+                    status = CriterionStatus.NOT_MET
+                    note = "Criterion was listed as missing by the reviewer."
+                    missing_evidence = [f"Evidence for: {criterion.description}"]
+                else:
+                    status = CriterionStatus.UNKNOWN
+                    note = "Criterion was not explicitly evaluated by the reviewer."
+                    missing_evidence = [
+                        f"Documentation needed to establish: {criterion.description}"
+                    ]
+                detail = CriterionEvaluation(
+                    id=criterion.id,
+                    description=criterion.description,
+                    met=status is CriterionStatus.MET,
+                    status=status,
+                    note=note,
+                    reasoning=note,
+                    missing_evidence=missing_evidence,
+                    confidence_score=0.85 if status is CriterionStatus.MET else 0.55,
+                    review_backend=backend,
+                )
+            else:
+                if not detail.description:
+                    detail.description = criterion.description
+                if not detail.review_backend:
+                    detail.review_backend = backend
+                if not detail.reasoning and detail.note:
+                    detail.reasoning = detail.note
+                if (
+                    detail.status is not CriterionStatus.MET
+                    and not detail.missing_evidence
+                ):
+                    detail.missing_evidence = [f"Evidence for: {criterion.description}"]
+            ordered.append(detail)
+
+        extra = [
+            detail
+            for detail in result.criteria_detail
+            if detail.id not in {criterion.id for criterion in guideline.required_criteria}
+        ]
+        for detail in extra:
+            if not detail.review_backend:
+                detail.review_backend = backend
+        result.criteria_detail = [*ordered, *extra]
+
+
+def _norm_text(value: str) -> str:
+    return " ".join(str(value).lower().split())

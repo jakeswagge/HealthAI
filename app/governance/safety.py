@@ -30,6 +30,25 @@ class SafetyGate:
 
     def review(self, review: ReviewResult) -> SafetyGateDecision:
         reasons: list[str] = []
+        gate = review.safety_gate or {}
+        comparison = gate.get("comparison") or {}
+        for reason in comparison.get("material_disagreements", []) or []:
+            reasons.append(f"Review comparison: {reason}")
+        invalid_ids = comparison.get("invalid_evidence_ids", []) or []
+        if invalid_ids:
+            reasons.append(
+                "Review comparison: AI cited unknown evidence id(s): "
+                + ", ".join(invalid_ids)
+                + "."
+            )
+        for reason in gate.get("validation_errors", []) or []:
+            reasons.append(f"Review validation: {reason}")
+        for reason in gate.get("unsupported_claims", []) or []:
+            reasons.append(f"Unsupported review claim: {reason}")
+        for reason in gate.get("governance_violations", []) or []:
+            reasons.append(f"Governance: {reason}")
+        for reason in gate.get("unresolved_conflicts", []) or []:
+            reasons.append(f"Unresolved conflict: {reason}")
         if review.confidence_score < self.settings.confidence_threshold:
             reasons.append(
                 f"Review confidence {review.confidence_score:.2f} below "
@@ -47,6 +66,16 @@ class SafetyGate:
 
     def appeal(self, appeal: AppealLetter) -> SafetyGateDecision:
         reasons: list[str] = []
+        gate = appeal.safety_gate or {}
+        for reason in gate.get("validation_errors", []) or []:
+            reasons.append(f"Appeal validation: {reason}")
+        for reason in gate.get("unsupported_claims", []) or []:
+            reasons.append(f"Unsupported appeal claim: {reason}")
+        invalid_ids = gate.get("invalid_evidence_ids", []) or []
+        if invalid_ids:
+            reasons.append(
+                "Appeal cites unknown evidence id(s): " + ", ".join(invalid_ids) + "."
+            )
         if appeal.confidence_score < self.settings.confidence_threshold:
             reasons.append(
                 f"Appeal confidence {appeal.confidence_score:.2f} below "
@@ -84,6 +113,13 @@ class SafetyGate:
             )
         ):
             reasons.append("Denial recommendation has no human sign-off.")
+        if record.review_result is not None:
+            review_gate = record.review_result.safety_gate or {}
+            if (
+                review_gate.get("status") == SafetyGateStatus.HUMAN_REVIEW_REQUIRED.value
+                and latest is None
+            ):
+                reasons.append("Review safety gate requires human review before export.")
         if not compliance.is_compliant:
             reasons.extend(
                 f"{v.code}: {v.description}" for v in compliance.violations

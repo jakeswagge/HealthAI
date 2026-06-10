@@ -61,9 +61,11 @@ def get_llm_client(force: str | None = None) -> LLMClient:
             # SDK missing or misconfigured: degrade gracefully to local.
             return LocalHeuristicClient()
 
+    # Auto-selection should use HealthAI configuration, not the SDK transport
+    # flag that GeminiClient sets internally after an explicit Gemini request.
     gemini_vertex_enabled = os.environ.get(
         "HEALTHAI_GEMINI_USE_VERTEXAI",
-        os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", ""),
+        "",
     ).strip().lower() in {"1", "true", "yes", "on"}
     if (
         gemini_vertex_enabled

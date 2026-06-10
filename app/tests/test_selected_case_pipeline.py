@@ -71,6 +71,45 @@ class ScriptedDetailsClient(LLMClient):
         )
 
 
+class ScriptedReviewClient(LLMClient):
+    name = "gemini"
+    model = "gemini-review-test"
+
+    def __init__(self):
+        self.calls = 0
+
+    @property
+    def is_ai(self) -> bool:
+        return True
+
+    def complete(self, *, system, messages, max_tokens=1500, temperature=0.0):
+        self.calls += 1
+        return LLMResponse(
+            text=(
+                "{"
+                '"guideline_id":"GL-HUMIRA-001",'
+                '"service_name":"Humira (adalimumab)",'
+                '"recommendation":"APPROVE",'
+                '"matched_criteria":["Documented diagnosis of moderate-to-severe '
+                'rheumatoid arthritis (or other approved indication)."],'
+                '"missing_criteria":[],'
+                '"missing_evidence":[],'
+                '"recommended_actions":["Proceed with authorization."],'
+                '"contraindications_found":[],'
+                '"rationale":"Gemini found the supplied evidence sufficient.",'
+                '"confidence_score":0.95,'
+                '"criteria_detail":[{"id":"DX_CONFIRMED",'
+                '"description":"Documented diagnosis of moderate-to-severe '
+                'rheumatoid arthritis (or other approved indication).",'
+                '"met":true,"status":"met","supporting_evidence_ids":[],'
+                '"missing_evidence":[],"reasoning":"Diagnosis is documented.",'
+                '"confidence_score":0.95,"review_backend":"gemini"}]'
+                "}"
+            ),
+            model=self.model,
+        )
+
+
 @pytest.fixture
 def fake_state(monkeypatch):
     state = FakeSessionState()
@@ -225,6 +264,42 @@ def test_ai_review_requires_ai_backend(fake_state, service, monkeypatch):
     assert review is None
     assert used_ai is False
     assert any("AI reasoning is not configured" in message for message in messages)
+
+
+def test_compare_review_runs_local_and_gemini(
+    fake_state,
+    service,
+    monkeypatch,
+):
+    record = service.create_case("compare-review.txt")
+    service.attach_extraction(
+        record.case_id,
+        PatientCase(
+            diagnosis="Rheumatoid arthritis",
+            requested_service="Humira",
+            decision=Decision.DENIED,
+        ),
+    )
+    session.set_persisted_case_id(record.case_id)
+    client = ScriptedReviewClient()
+    monkeypatch.setattr(
+        dashboard,
+        "get_llm_client",
+        lambda force=None: client if force == "gemini" else pytest.fail(force),
+    )
+    monkeypatch.setattr(
+        dashboard.st,
+        "spinner",
+        lambda *args, **kwargs: FakeSpinner(),
+    )
+
+    review, used_ai = dashboard._get_or_run_review(force=True, mode="compare")
+
+    assert review is not None
+    assert used_ai is True
+    assert client.calls == 1
+    assert review.safety_gate["comparison"]["ai_recommendation"] == "APPROVE"
+    assert service.get_case(record.case_id).review_result.safety_gate["comparison"]
 
 
 def test_patient_details_extraction_uses_gemini_preferred_client(

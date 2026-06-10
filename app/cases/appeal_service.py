@@ -45,8 +45,18 @@ class AppealService:
     def attach_appeal(self, case_id: str, appeal: AppealLetter) -> CaseRecord:
         """Attach appeal output, move to APPEAL_GENERATED then PENDING review."""
         record = self.lifecycle.require(case_id)
+        existing_gate = dict(appeal.safety_gate or {})
         gate = SafetyGate(self._settings()).appeal(appeal)
-        appeal.safety_gate = gate.model_dump(mode="json")
+        gate_payload = gate.model_dump(mode="json")
+        for key in (
+            "validation_errors",
+            "unsupported_claims",
+            "invalid_evidence_ids",
+            "governance_violations",
+        ):
+            if key in existing_gate:
+                gate_payload[key] = existing_gate[key]
+        appeal.safety_gate = gate_payload
         record.appeal_letter = appeal
         if record.status is not CaseStatus.PENDING_HUMAN_REVIEW:
             self.lifecycle.set_status(record, CaseStatus.APPEAL_GENERATED)

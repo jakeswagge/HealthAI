@@ -10,7 +10,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 
 
 class Recommendation(str, Enum):
@@ -19,6 +19,14 @@ class Recommendation(str, Enum):
     APPROVE = "APPROVE"
     DENY = "DENY"
     INSUFFICIENT_INFORMATION = "INSUFFICIENT_INFORMATION"
+
+
+class CriterionStatus(str, Enum):
+    """Normalized status for one guideline criterion."""
+
+    MET = "met"
+    NOT_MET = "not_met"
+    UNKNOWN = "unknown"
 
 
 class CriterionEvaluation(BaseModel):
@@ -30,6 +38,76 @@ class CriterionEvaluation(BaseModel):
     note: Optional[str] = Field(
         default=None, description="Optional explanation / evidence reference."
     )
+    status: CriterionStatus | None = Field(
+        default=None,
+        description="Normalized criterion status: met, not_met, or unknown.",
+    )
+    supporting_evidence_ids: list[str] = Field(
+        default_factory=list,
+        description="EvidenceReference ids supporting this rule evaluation.",
+    )
+    missing_evidence: list[str] = Field(
+        default_factory=list,
+        description="Evidence still needed for this rule, if any.",
+    )
+    reasoning: Optional[str] = Field(
+        default=None,
+        description="Rule-level reasoning for the criterion status.",
+    )
+    confidence_score: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Confidence for this individual criterion evaluation.",
+    )
+    review_backend: Optional[str] = Field(
+        default=None,
+        description="Backend that produced this criterion evaluation.",
+    )
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _coerce_status(cls, v):
+        if v is None or isinstance(v, CriterionStatus):
+            return v
+        text = str(v).strip().lower().replace("-", "_").replace(" ", "_")
+        if text in {"met", "satisfied", "yes", "true"}:
+            return CriterionStatus.MET
+        if text in {"not_met", "unmet", "missing", "failed", "false", "no"}:
+            return CriterionStatus.NOT_MET
+        if text in {"unknown", "unclear", "insufficient", "insufficient_information"}:
+            return CriterionStatus.UNKNOWN
+        return CriterionStatus.UNKNOWN
+
+    @field_validator("supporting_evidence_ids", "missing_evidence", mode="before")
+    @classmethod
+    def _coerce_str_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v] if v.strip() else []
+        return [str(item).strip() for item in v if str(item).strip()]
+
+    @field_validator("confidence_score", mode="before")
+    @classmethod
+    def _coerce_detail_confidence(cls, v):
+        if v is None:
+            return 0.0
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return 0.0
+        return max(0.0, min(1.0, f))
+
+    @model_validator(mode="after")
+    def _fill_backward_compatible_fields(self):
+        if self.status is None:
+            self.status = CriterionStatus.MET if self.met else CriterionStatus.NOT_MET
+        if not self.reasoning and self.note:
+            self.reasoning = self.note
+        if self.confidence_score <= 0.0:
+            self.confidence_score = 0.85 if self.met else 0.55
+        return self
 
 
 class ReviewResult(BaseModel):

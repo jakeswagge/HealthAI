@@ -23,7 +23,7 @@ from app.models.conflict_report import (
     FactConflict,
 )
 from app.models.evidence_reference import EvidenceReference
-from app.models.patient_case import Decision, FieldSource, PatientCase
+from app.models.patient_case import Decision, FieldSource, NormalizedField, PatientCase
 from app.models.unified_case_context import ResolvedFact, UnifiedCaseContext
 
 # Single-value facts (one canonical value expected across the case).
@@ -39,7 +39,10 @@ _SCALAR_FACTS = (
     "denial_reason",
     "tb_screen_result",
     "provider_role",
+    "specialist_status",
     "step_therapy_status",
+    "prior_auth_status",
+    "claim_denial_reason",
 )
 _LIST_FACTS = ("icd10_codes", "cpt_codes")
 
@@ -64,7 +67,10 @@ _CONFLICT_SEVERITY: dict[str, ConflictSeverity] = {
     "decision": ConflictSeverity.MEDIUM,
     "tb_screen_result": ConflictSeverity.HIGH,
     "provider_role": ConflictSeverity.MEDIUM,
+    "specialist_status": ConflictSeverity.MEDIUM,
     "step_therapy_status": ConflictSeverity.HIGH,
+    "prior_auth_status": ConflictSeverity.MEDIUM,
+    "claim_denial_reason": ConflictSeverity.MEDIUM,
 }
 
 # Document types considered more authoritative for a given fact.
@@ -74,6 +80,12 @@ _AUTHORITATIVE: dict[str, tuple[DocumentCategory, ...]] = {
     "decision": (DocumentCategory.DENIAL_LETTER,),
     "requested_service": (DocumentCategory.PRIOR_AUTH_FORM, DocumentCategory.DENIAL_LETTER),
     "member_id": (DocumentCategory.DENIAL_LETTER, DocumentCategory.PRIOR_AUTH_FORM),
+    "tb_screen_result": (DocumentCategory.LAB_RESULT, DocumentCategory.CLINICAL_NOTE),
+    "provider_role": (DocumentCategory.CLINICAL_NOTE, DocumentCategory.REFERRAL),
+    "specialist_status": (DocumentCategory.CLINICAL_NOTE, DocumentCategory.REFERRAL),
+    "step_therapy_status": (DocumentCategory.CLINICAL_NOTE,),
+    "prior_auth_status": (DocumentCategory.DENIAL_LETTER,),
+    "claim_denial_reason": (DocumentCategory.DENIAL_LETTER,),
 }
 
 _CLINICAL_SERVICE_TOKENS: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -182,6 +194,7 @@ class CaseAssemblyEngine:
                 evidence_id=chosen.evidence_id,
                 source_filename=chosen.source_filename,
                 source_page=chosen.page_number,
+                confidence_score=chosen.confidence_score,
                 alternatives=[v for v in distinct if v != _norm_value(fact, chosen.normalized_fact.split(": ", 1)[-1])],
             )
             if len(distinct) > 1:
@@ -373,11 +386,21 @@ class CaseAssemblyEngine:
         decision_raw = val("decision") or "pending"
 
         field_sources: dict[str, FieldSource] = {}
+        raw_fields: dict[str, object] = {}
+        normalized_fields: dict[str, NormalizedField] = {}
         for fact, rf in resolved.items():
             field_sources[fact] = FieldSource(
                 source_document=rf.source_filename,
                 source_page=rf.source_page,
                 evidence_id=rf.evidence_id,
+            )
+            raw_fields[fact] = rf.value
+            normalized_fields[fact] = NormalizedField(
+                raw_value=rf.value,
+                normalized_value=rf.value,
+                source_evidence_ids=[rf.evidence_id],
+                confidence_score=rf.confidence_score,
+                method="evidence-reference",
             )
 
         case = PatientCase(
@@ -393,6 +416,8 @@ class CaseAssemblyEngine:
             denial_reason=val("denial_reason") if decision_raw == "denied" else None,
             physician_name=val("physician_name"),
             field_sources=field_sources,
+            raw_fields=raw_fields,
+            normalized_fields=normalized_fields,
         )
         # Completeness-based confidence so downstream UIs show something useful.
         if case.confidence_score <= 0.0:

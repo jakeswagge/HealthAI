@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 
+from app.ingestion.classifier import detect_document_sections
 from app.models.case_document import CaseDocument, DocumentCategory
 from app.models.evidence_reference import EvidenceReference
 from app.review.clinical_nlp import (
@@ -46,7 +47,10 @@ FACT_TYPES: tuple[str, ...] = (
     "cpt_codes",
     "tb_screen_result",
     "provider_role",
+    "specialist_status",
     "step_therapy_status",
+    "prior_auth_status",
+    "claim_denial_reason",
 )
 
 _SEP = r"\s*[:.]+\s*"
@@ -293,10 +297,18 @@ class EvidenceExtractor:
     def extract(self, document: CaseDocument) -> list[EvidenceReference]:
         """Extract all evidence references found in the document."""
         evidence: list[EvidenceReference] = []
-        pages = document.pages()
+        sections = detect_document_sections(document)
 
-        for page_index, page_text in enumerate(pages, start=1):
-            evidence.extend(self._extract_page(document, page_index, page_text))
+        for section in sections:
+            for offset, page_text in enumerate(section.pages()):
+                page_number = section.page_start + offset
+                refs = self._extract_page(document, page_number, page_text)
+                for ref in refs:
+                    ref.section_label = _merge_section_label(
+                        section.section_type.value,
+                        ref.section_label,
+                    )
+                evidence.extend(refs)
 
         return evidence
 
@@ -386,6 +398,35 @@ class EvidenceExtractor:
                             document, page_number, "denial_reason", reason, reason_line, 0.8
                         )
                     )
+                    claim_reason = self._claim_denial_reason(reason)
+                    if claim_reason:
+                        refs.append(
+                            self._make_ref(
+                                document,
+                                page_number,
+                                "claim_denial_reason",
+                                claim_reason,
+                                reason_line,
+                                0.8,
+                            )
+                        )
+
+        prior_auth_status = self._prior_auth_status(page_text)
+        if prior_auth_status:
+            line = self._find_line(
+                lines,
+                ("prior authorization", "prior auth", "pa number", "authorization number"),
+            ) or prior_auth_status
+            refs.append(
+                self._make_ref(
+                    document,
+                    page_number,
+                    "prior_auth_status",
+                    prior_auth_status,
+                    line,
+                    0.8,
+                )
+            )
 
         # --- code lists ---
         for code in self._unique(ICD10_RE.findall(page_text)):
@@ -510,6 +551,19 @@ class EvidenceExtractor:
                             0.85,
                         )
                     )
+                specialist_key = ("specialist_status", "documented", quote)
+                if specialist_key not in seen:
+                    seen.add(specialist_key)
+                    refs.append(
+                        self._make_ref(
+                            document,
+                            page_number,
+                            "specialist_status",
+                            "documented",
+                            quote,
+                            0.85,
+                        )
+                    )
 
             if document.document_type is not DocumentCategory.DENIAL_LETTER:
                 status = step_therapy_status(signal)
@@ -596,6 +650,62 @@ class EvidenceExtractor:
         return None
 
     @staticmethod
+    def _prior_auth_status(text: str) -> str | None:
+        low = text.lower()
+        missing_patterns = (
+            "no prior authorization",
+            "without prior authorization",
+            "prior authorization was not obtained",
+            "prior authorization not obtained",
+            "prior auth was not obtained",
+            "prior auth not obtained",
+            "missing prior authorization",
+            "missing pa number",
+            "no pa number",
+            "pa number was not provided",
+            "authorization number was not provided",
+            "authorization not on file",
+            "no authorization on file",
+            "not authorized before service",
+        )
+        if any(pattern in low for pattern in missing_patterns):
+            return "missing"
+
+        present_patterns = (
+            "prior authorization number",
+            "prior auth number",
+            "pa number",
+            "pa #",
+            "authorization number",
+            "auth number",
+            "authorization on file",
+        )
+        if any(pattern in low for pattern in present_patterns):
+            return "documented"
+        return None
+
+    @staticmethod
+    def _claim_denial_reason(reason: str) -> str | None:
+        low = reason.lower()
+        missing_cues = (
+            "no ",
+            "not obtained",
+            "missing",
+            "not on file",
+            "not provided",
+            "without",
+        )
+        if (
+            "prior authorization" in low
+            or "prior auth" in low
+            or "pa number" in low
+        ) and any(cue in low for cue in missing_cues):
+            return "missing prior authorization"
+        if "authorization number" in low and any(cue in low for cue in missing_cues):
+            return "missing prior authorization number"
+        return None
+
+    @staticmethod
     def _detect_decision(text: str) -> str | None:
         for m in re.finditer(
             rf"\b(?:request\s+status|status|decision|determination){_SEP}([^\n]+)",
@@ -665,3 +775,10 @@ class EvidenceExtractor:
             re.IGNORECASE,
         )
         return m.group(1).strip() if m else None
+
+
+def _merge_section_label(section_type: str, label: str | None) -> str:
+    """Prefix an evidence label with the derived document section."""
+    if label:
+        return f"{section_type}: {label}"
+    return section_type
