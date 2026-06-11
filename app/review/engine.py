@@ -99,6 +99,16 @@ STEP_THERAPY_VOCABULARY = [
     "mtx-induced",
     "attributable to methotrexate",
     "attributable to mtx",
+    "failed azathioprine",
+    "azathioprine failure",
+    "azathioprine trial",
+    "trial of azathioprine",
+    "trial of oral azathioprine",
+    "inadequate response to azathioprine",
+    "azathioprine ineffective",
+    "refractory to azathioprine",
+    "failed aza",
+    "aza failure",
 ]
 
 _NEGATION_BEFORE_RE = re.compile(
