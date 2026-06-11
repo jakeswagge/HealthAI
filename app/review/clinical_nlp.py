@@ -86,6 +86,8 @@ _TARGET_RULES: tuple[tuple[str, str], ...] = (
     ("Derm", "SPECIALIST_DERM"),
     ("Dermatologist", "SPECIALIST_DERM"),
     ("Dermatology", "SPECIALIST_DERM"),
+    ("Gastroenterologist", "SPECIALIST_GI"),
+    ("Gastroenterology", "SPECIALIST_GI"),
     ("Specialist", "SPECIALIST_RHEUM"),
     ("Chiro", "PROVIDER_CHIROPRACTIC"),
     ("Chiropractor", "PROVIDER_CHIROPRACTIC"),
@@ -103,6 +105,7 @@ _DIAGNOSIS_CANONICAL = {
 _SPECIALIST_ROLE_CANONICAL = {
     "SPECIALIST_RHEUM": "rheumatology specialist",
     "SPECIALIST_DERM": "dermatology specialist",
+    "SPECIALIST_GI": "gastroenterology specialist",
 }
 _PROVIDER_ROLE_CANONICAL = {
     **_SPECIALIST_ROLE_CANONICAL,

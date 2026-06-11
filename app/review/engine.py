@@ -66,6 +66,13 @@ SPECIALIST_VOCABULARY = [
     "consulting rheumatologist",
     "reviewed by rheumatology service",
     "rheum",
+    "gastroenterology",
+    "gastroenterologist",
+    "gastroenterology consultation",
+    "seen by gastroenterologist",
+    "seen by gastroenterology",
+    "referred to gastroenterology",
+    "under care of gastroenterology",
 ]
 
 TB_SCREEN_VOCABULARY = [
@@ -258,10 +265,13 @@ _SPECIALIST_ABSENCE_CUES = (
     "no specialist",
     "no rheumatologist",
     "no rheumatology",
+    "no gastroenterologist",
+    "no gastroenterology",
     "not documented",
     "missing",
     "without specialist",
     "without rheumatology",
+    "without gastroenterology",
 )
 _BIOLOGIC_PRIOR_CUES = (
     "previous",
@@ -670,7 +680,7 @@ def _evaluate_with_medspacy(
             )
 
     if "specialist" in marker or "rheumatologist" in marker:
-        specialist_labels = ("SPECIALIST_RHEUM", "SPECIALIST_DERM")
+        specialist_labels = ("SPECIALIST_RHEUM", "SPECIALIST_DERM", "SPECIALIST_GI")
         specialist_def = _signals_any(deficiency_signals, specialist_labels)
         if specialist_def:
             return "unmet", _signal_note("Denial references specialist involvement", specialist_def[0])
