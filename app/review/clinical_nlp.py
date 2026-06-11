@@ -178,6 +178,52 @@ _STEP_ABSENCE_CUES = (
     "without mtx",
     "without dmard",
 )
+_STEP_ADVERSE_EVENT_CUES = (
+    "toxicity",
+    "hepatotoxicity",
+    "hepatic injury",
+    "liver injury",
+    "transaminitis",
+    "elevated liver enzymes",
+    "elevated transaminases",
+    "cytopenia",
+    "pancytopenia",
+    "mucositis",
+    "pneumonitis",
+    "adverse reaction",
+    "adverse event",
+    "serious adverse",
+)
+_STEP_ATTRIBUTION_CUES = (
+    "attributable to",
+    "attributed to",
+    "due to",
+    "secondary to",
+    "caused by",
+    "induced",
+    "discontinued because",
+    "stopped because",
+)
+_STEP_DIRECT_INTOLERANCE_CUES = (
+    "could not tolerate",
+    "unable to tolerate",
+    "did not tolerate",
+    "not tolerated",
+    "contraindicated",
+)
+_STEP_ADVERSE_NEGATION_CUES = (
+    "no evidence of",
+    "without evidence of",
+    "no signs of",
+    "negative for",
+    "denies",
+    "ruled out",
+    "not attributable",
+    "not attributed",
+    "not related to",
+    "unrelated to",
+    "not contraindicated",
+)
 
 
 def _bool_ext(ent: Any, name: str) -> bool:
@@ -287,8 +333,24 @@ def provider_role(signal: ClinicalSignal) -> str | None:
     return _PROVIDER_ROLE_CANONICAL.get(signal.label)
 
 
+def _is_step_intolerance_sentence(sentence: str) -> bool:
+    """True when a sentence documents intolerance/toxicity attributable to the agent.
+
+    Requires either an explicit intolerance/contraindication phrase, or an
+    adverse-event cue paired with a causal-attribution cue. Negated mentions
+    (e.g. 'no evidence of MTX-induced toxicity') never qualify.
+    """
+    if _has_any(sentence, _STEP_ADVERSE_NEGATION_CUES):
+        return False
+    if _has_any(sentence, _STEP_DIRECT_INTOLERANCE_CUES):
+        return True
+    return _has_any(sentence, _STEP_ADVERSE_EVENT_CUES) and _has_any(
+        sentence, _STEP_ATTRIBUTION_CUES
+    )
+
+
 def step_therapy_status(signal: ClinicalSignal) -> str | None:
-    """Classify a step-therapy mention as failed, refused, absent, or unknown."""
+    """Classify a step-therapy mention as failed, refused, intolerance, absent, or unknown."""
     if signal.label != "STEP_THERAPY":
         return None
     if (
@@ -300,6 +362,8 @@ def step_therapy_status(signal: ClinicalSignal) -> str | None:
         return None
     if _has_any(signal.sentence, _STEP_REFUSAL_CUES):
         return "refused"
+    if _is_step_intolerance_sentence(signal.sentence):
+        return "intolerance"
     if signal.is_negated or _has_any(signal.sentence, _STEP_ABSENCE_CUES):
         return "absent"
     if _has_any(signal.sentence, _STEP_FAILURE_CUES):

@@ -91,6 +91,14 @@ STEP_THERAPY_VOCABULARY = [
     "methotrexate ineffective",
     "uncontrolled disease on methotrexate",
     "refractory to methotrexate",
+    "methotrexate toxicity",
+    "mtx toxicity",
+    "methotrexate intolerance",
+    "intolerant to methotrexate",
+    "methotrexate-induced",
+    "mtx-induced",
+    "attributable to methotrexate",
+    "attributable to mtx",
 ]
 
 _NEGATION_BEFORE_RE = re.compile(
@@ -420,6 +428,8 @@ def _normalized_support_text(case: PatientCase) -> str:
         parts.append(f"step therapy status {step}")
         if step.lower() == "failed":
             parts.extend(("failed methotrexate", "methotrexate failure"))
+        elif step.lower() in ("intolerance", "intolerant", "toxicity"):
+            parts.extend(("methotrexate intolerance", "intolerant to methotrexate"))
         elif step.lower() == "refused":
             parts.append("methotrexate refused")
         elif step.lower() == "absent":
@@ -598,6 +608,10 @@ def _evaluate_with_medspacy(
             (s for s in step_support if step_therapy_status(s) == "refused"),
             None,
         )
+        intolerance = next(
+            (s for s in step_support if step_therapy_status(s) == "intolerance"),
+            None,
+        )
         absent = next(
             (
                 s for s in step_support
@@ -630,6 +644,11 @@ def _evaluate_with_medspacy(
         )
         if refused:
             return "unmet", _signal_note("Step therapy refusal documented", refused)
+        if intolerance:
+            return "met", _signal_note(
+                "Step therapy satisfied via intolerance/toxicity exception",
+                intolerance,
+            )
         if absent:
             return "unmet", _signal_note("Step therapy absence documented", absent)
         if met:
