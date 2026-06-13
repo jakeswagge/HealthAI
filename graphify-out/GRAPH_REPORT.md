@@ -1,16 +1,16 @@
-# Graph Report - HealthAI  (2026-06-10)
+# Graph Report - HealthAI  (2026-06-12)
 
 ## Corpus Check
-- 241 files · ~127,531 words
+- 247 files · ~133,109 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 4091 nodes · 14565 edges · 174 communities (156 shown, 18 thin omitted)
-- Extraction: 50% EXTRACTED · 50% INFERRED · 0% AMBIGUOUS · INFERRED: 7261 edges (avg confidence: 0.5)
+- 4351 nodes · 15222 edges · 170 communities (151 shown, 19 thin omitted)
+- Extraction: 51% EXTRACTED · 49% INFERRED · 0% AMBIGUOUS · INFERRED: 7450 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7a84ebc6`
+- Built from commit: `fe7ec750`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -121,9 +121,7 @@
 - [[_COMMUNITY_Community 103|Community 103]]
 - [[_COMMUNITY_Community 104|Community 104]]
 - [[_COMMUNITY_Community 105|Community 105]]
-- [[_COMMUNITY_Community 106|Community 106]]
 - [[_COMMUNITY_Community 107|Community 107]]
-- [[_COMMUNITY_Community 108|Community 108]]
 - [[_COMMUNITY_Community 109|Community 109]]
 - [[_COMMUNITY_Community 110|Community 110]]
 - [[_COMMUNITY_Community 111|Community 111]]
@@ -149,57 +147,55 @@
 - [[_COMMUNITY_Community 131|Community 131]]
 - [[_COMMUNITY_Community 132|Community 132]]
 - [[_COMMUNITY_Community 133|Community 133]]
-- [[_COMMUNITY_Community 134|Community 134]]
 - [[_COMMUNITY_Community 135|Community 135]]
 - [[_COMMUNITY_Community 136|Community 136]]
 - [[_COMMUNITY_Community 137|Community 137]]
-- [[_COMMUNITY_Community 138|Community 138]]
 - [[_COMMUNITY_Community 139|Community 139]]
-- [[_COMMUNITY_Community 140|Community 140]]
 - [[_COMMUNITY_Community 141|Community 141]]
 - [[_COMMUNITY_Community 142|Community 142]]
-- [[_COMMUNITY_Community 143|Community 143]]
 - [[_COMMUNITY_Community 144|Community 144]]
 - [[_COMMUNITY_Community 145|Community 145]]
-- [[_COMMUNITY_Community 146|Community 146]]
-- [[_COMMUNITY_Community 147|Community 147]]
 - [[_COMMUNITY_Community 148|Community 148]]
-- [[_COMMUNITY_Community 149|Community 149]]
 - [[_COMMUNITY_Community 150|Community 150]]
 - [[_COMMUNITY_Community 151|Community 151]]
 - [[_COMMUNITY_Community 152|Community 152]]
 - [[_COMMUNITY_Community 153|Community 153]]
 - [[_COMMUNITY_Community 154|Community 154]]
-- [[_COMMUNITY_Community 155|Community 155]]
 - [[_COMMUNITY_Community 156|Community 156]]
-- [[_COMMUNITY_Community 157|Community 157]]
-- [[_COMMUNITY_Community 158|Community 158]]
 - [[_COMMUNITY_Community 159|Community 159]]
 - [[_COMMUNITY_Community 160|Community 160]]
-- [[_COMMUNITY_Community 161|Community 161]]
 - [[_COMMUNITY_Community 162|Community 162]]
-- [[_COMMUNITY_Community 164|Community 164]]
 - [[_COMMUNITY_Community 165|Community 165]]
 - [[_COMMUNITY_Community 166|Community 166]]
 - [[_COMMUNITY_Community 167|Community 167]]
 - [[_COMMUNITY_Community 168|Community 168]]
 - [[_COMMUNITY_Community 169|Community 169]]
 - [[_COMMUNITY_Community 170|Community 170]]
-- [[_COMMUNITY_Community 172|Community 172]]
+- [[_COMMUNITY_Community 173|Community 173]]
+- [[_COMMUNITY_Community 174|Community 174]]
 - [[_COMMUNITY_Community 176|Community 176]]
-- [[_COMMUNITY_Community 182|Community 182]]
+- [[_COMMUNITY_Community 181|Community 181]]
+- [[_COMMUNITY_Community 183|Community 183]]
+- [[_COMMUNITY_Community 186|Community 186]]
+- [[_COMMUNITY_Community 187|Community 187]]
+- [[_COMMUNITY_Community 188|Community 188]]
+- [[_COMMUNITY_Community 199|Community 199]]
+- [[_COMMUNITY_Community 216|Community 216]]
+- [[_COMMUNITY_Community 223|Community 223]]
+- [[_COMMUNITY_Community 225|Community 225]]
+- [[_COMMUNITY_Community 227|Community 227]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `PatientCase` - 359 edges
-2. `AuditEventType` - 281 edges
-3. `ReviewResult` - 273 edges
+1. `PatientCase` - 379 edges
+2. `ReviewResult` - 288 edges
+3. `AuditEventType` - 281 edges
 4. `AuditRepository` - 230 edges
-5. `AppealLetter` - 218 edges
-6. `CaseService` - 217 edges
+5. `CaseService` - 223 edges
+6. `AppealLetter` - 218 edges
 7. `EvidenceReference` - 216 edges
 8. `GovernanceSettings` - 204 edges
-9. `AuditActor` - 187 edges
-10. `CaseAssemblyEngine` - 178 edges
+9. `Recommendation` - 198 edges
+10. `CaseDocument` - 191 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `int` --uses--> `GovernanceSettings`  [INFERRED]
@@ -216,15 +212,15 @@
 ## Import Cycles
 - None detected.
 
-## Communities (174 total, 18 thin omitted)
+## Communities (170 total, 19 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.06
-Nodes (95): Connection, int, Path, bytes, Connection, Path, UnifiedCaseContext, AuditRepository (+87 more)
+Cohesion: 0.15
+Nodes (9): EvidenceDecision, EvidenceReference, EvidenceReviewDecision, str, Evidence ids whose latest decision is APPROVE., Evidence ids whose latest decision is REJECT., Build a view per evidence reference with quality + relations., Persist a reviewer decision about an evidence reference. (+1 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.18
-Nodes (104): Operational quality analytics.  The :class:`QualityAnalyticsEngine` computes e, QualityAnalytics, QualityAnalyticsEngine, Snapshot of quality + workflow analytics., Compute :class:`QualityAnalytics` from local storage.      Depends on reposito, AppealExplanation, AppealLetter, ApprovedEvidenceSet (+96 more)
+Nodes (96): QualityAnalytics, QualityAnalyticsEngine, Snapshot of quality + workflow analytics., Compute :class:`QualityAnalytics` from local storage.      Depends on reposito, AppealExplanation, AppealLetter, ApprovedEvidenceSet, AuthoritativeFact (+88 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.15
@@ -232,35 +228,35 @@ Nodes (11): GovernanceSettings, Tests for Milestone 13: governance-enforced revi
 
 ### Community 3 - "Community 3"
 Cohesion: 0.04
-Nodes (74): int, LLMClient, bool, int, LLMClient, GuidelineRepository, int, LLMClient (+66 more)
+Nodes (85): int, LLMClient, bool, float, int, LLMResponse, str, LLMClient (+77 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.13
-Nodes (6): MockClaudeClient, A scripted, realistic Claude stand-in implementing :class:`LLMClient`., Tests for MockClaudeClient and the agent behavior it exercises.  These verify, TestMockClientShape, TestRetryLogic, TestValidationLayer
+Cohesion: 0.07
+Nodes (50): Connection, Path, float, bool, CaseDocument, DocumentCategory, float, int (+42 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.15
-Nodes (13): CaseRecord, CaseStatus, str, CaseRepository, _dump(), _load(), SQLite-backed repository for :class:`CaseRecord`.  Workflow scalars are stored, Upsert a case record (insert if new, else update). (+5 more)
+Cohesion: 0.11
+Nodes (20): bool, CaseRecord, CaseStatus, Connection, int, Path, Row, str (+12 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.24
-Nodes (8): ApprovedEvidenceSet, GovernanceSettings, str, Return the evidence downstream consumers should use + the approved set., Fact types with a detected conflict that lacks a resolution., Run a governance compliance check on a case (audited)., Persist governance settings and audit the change (global event)., Apply governance settings to a case's evidence (audited).
+Cohesion: 0.12
+Nodes (32): AuditRepository, AuthoritativeFact, AuthoritativeFactRepository, CaseLifecycle, ConflictResolution, ConflictResolutionEngine, ConflictResolutionRepository, FeedbackTarget (+24 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.20
-Nodes (13): ApprovedEvidenceSet, EvidenceReference, str, ValidatedEvidenceEngine: apply governance policy to a case's evidence.  Given, Return only the evidence references included by the approved set., Produce a governance-filtered evidence set for downstream consumers., Apply governance settings and return the included/excluded split., ValidatedEvidenceEngine (+5 more)
+Cohesion: 0.07
+Nodes (35): bool, ConflictReport, EvidenceQualityAssessment, GovernanceComplianceReport, GovernanceSettings, str, ApprovedEvidenceSet, EvidenceQualityAssessment (+27 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.03
-Nodes (43): GovernanceSettings, str, Attach extraction output and move to EXTRACTED., Attach extraction output and move to EXTRACTED., Attach a supporting document to a case and record an audit event., Attach a supporting document to a case and record an audit event., Ingest any supported upload (TXT/PDF/PNG/JPG/JPEG) into a case., Ingest any supported upload (TXT/PDF/PNG/JPG/JPEG) into a case. (+35 more)
+Cohesion: 0.11
+Nodes (14): bool, float, int, ReviewResult, str, _coerce_to_review_result(), evaluate_scenario(), Evaluation framework for the clinical review engine / agent.  Measures across (+6 more)
 
 ### Community 9 - "Community 9"
 Cohesion: 0.07
-Nodes (66): AppealLetter, bool, ClinicalGuideline, GuidelineRepository, int, LLMClient, PatientCase, ReviewResult (+58 more)
+Nodes (70): AppealLetter, bool, ClinicalGuideline, GuidelineRepository, int, LLMClient, PatientCase, ReviewResult (+62 more)
 
 ### Community 10 - "Community 10"
-Cohesion: 0.06
-Nodes (36): str, AuditActor, CaseRecord, CaseStatus, str, bool, CaseStatus, AppealLetter (+28 more)
+Cohesion: 0.23
+Nodes (6): Tests for Milestone 5: case management, audit, metrics, export.  All tests use, _sample_appeal(), _sample_case(), _sample_review(), TestCaseLifecycle, TestMetrics
 
 ### Community 11 - "Community 11"
 Cohesion: 0.06
@@ -268,23 +264,23 @@ Nodes (39): Connection, EvidenceReference, int, Path, Row, str, Path, str (+31 m
 
 ### Community 12 - "Community 12"
 Cohesion: 0.04
-Nodes (43): float, PatientCase, bool, CaseService, AppealAgentError, Raised when appeal generation fails unrecoverably., dict, PatientCase (+35 more)
+Nodes (48): PatientCase, bool, CaseService, PatientCase, str, AppealAgentError, Raised when appeal generation fails unrecoverably., PatientCase (+40 more)
 
 ### Community 13 - "Community 13"
 Cohesion: 0.07
-Nodes (40): bool, bytes, bool, OCREngine, bool, bytes, OCRCapability, str (+32 more)
+Nodes (39): bool, bytes, bool, OCREngine, bool, bytes, OCRCapability, str (+31 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.03
-Nodes (50): CaseDocument, str, CaseService, High-level workflow operations over cases + audit (facade)., High-level workflow operations over cases + audit (facade)., Create a NEW case and record DOCUMENT_UPLOADED + creation., Create a NEW case and record DOCUMENT_UPLOADED + creation., Assemble all of a case's documents into a UnifiedCaseContext. (+42 more)
+Cohesion: 0.02
+Nodes (70): CaseService, High-level workflow operations over cases + audit (facade)., High-level workflow operations over cases + audit (facade)., Attach extraction output and move to EXTRACTED., Attach extraction output and move to EXTRACTED., Attach extraction output and move to EXTRACTED., Assemble all of a case's documents into a UnifiedCaseContext., Score every evidence reference for a case and persist the results. (+62 more)
 
 ### Community 15 - "Community 15"
-Cohesion: 0.13
-Nodes (19): str, _contains_any(), _expanded_keywords(), _has_missing_tb_documentation(), _has_noncovered_osteoarthritis_indication(), _is_negated_context(), _keyword_pattern(), Return the first deterministic keyword/phrase found in text, or None. (+11 more)
+Cohesion: 0.18
+Nodes (14): bool, float, ReviewResult, str, cited_evidence_ids(), compare_reviews(), _criterion_statuses(), _norm_list() (+6 more)
 
 ### Community 16 - "Community 16"
-Cohesion: 0.06
-Nodes (36): _parse_ts(), QualityAnalyticsEngine: evidence-quality + workflow analytics.  Computes, from, str, Connection, Path, Connection, Path, str (+28 more)
+Cohesion: 0.05
+Nodes (41): Connection, Path, Connection, Path, Connection, Path, Connection, Path (+33 more)
 
 ### Community 17 - "Community 17"
 Cohesion: 0.04
@@ -295,88 +291,88 @@ Cohesion: 0.05
 Nodes (42): 1. Circular dependencies — **High**, 2. `CaseService` god object — **High**, 3. `case_ui.py` oversized module — **High**, 4. Dead / parallel evidence-assembly lineage — **Medium**, 5. `app.models` over-coupled hub — **Medium**, 6. UI ↔ `CaseService` internal coupling — **Medium**, 7. `export.py` builder accretion — **Medium**, 8. Duplicated agent JSON-parse/retry logic — **Low** (+34 more)
 
 ### Community 19 - "Community 19"
-Cohesion: 0.08
-Nodes (36): bool, bytes, DocumentCategory, float, int, IngestionService: document attachment, intelligent ingestion, and OCR.  Extrac, DocumentClassifier, DocumentClassifier (+28 more)
+Cohesion: 0.11
+Nodes (22): bool, bytes, DocumentCategory, float, int, DocumentClassifier, DocumentIngestionEngine, _ext() (+14 more)
 
 ### Community 20 - "Community 20"
-Cohesion: 0.13
-Nodes (16): AuthoritativeFact, ConflictResolution, Connection, int, Path, Row, str, Who established an authoritative fact. (+8 more)
+Cohesion: 0.12
+Nodes (18): str, AuthoritativeFact, ConflictResolution, int, Row, str, new_fact_id(), new_resolution_id() (+10 more)
 
 ### Community 21 - "Community 21"
 Cohesion: 0.06
-Nodes (60): bool, str, Base class for validation problems., ValidationError, main(), HealthAI Streamlit entry point.  Run locally with:      streamlit run stream, _active_pipeline_ready(), _database_case_ready() (+52 more)
+Nodes (57): reset_case_service(), _active_pipeline_ready(), _clear_streamlit_runtime_caches(), _database_case_ready(), describe_patient_details_backend(), _document_ready(), _get_or_extract_case(), _get_or_generate_appeal() (+49 more)
 
 ### Community 22 - "Community 22"
-Cohesion: 0.09
-Nodes (27): EvidenceReference, str, _norm_value(), Assemble a unified, evidence-backed context for a case., Assemble a context from a GIVEN evidence list (not re-extracted).          Mil, Assemble a context from a GIVEN evidence list (not re-extracted).          Mil, Assemble a context from a GIVEN evidence list (not re-extracted).          Mil, Shared assembly core: group -> resolve -> synthesize a context. (+19 more)
+Cohesion: 0.06
+Nodes (62): bool, CaseDocument, EvidenceExtractor, EvidenceReference, PatientCase, str, UnifiedCaseContext, bool (+54 more)
 
 ### Community 23 - "Community 23"
-Cohesion: 0.06
-Nodes (36): bool, ClinicalGuideline, int, Path, PatientCase, str, float, PatientCase (+28 more)
+Cohesion: 0.22
+Nodes (6): ClinicalGuideline, GuidelineRepository, Path, str, List pack ids: DEFAULT plus any subdirectory of the packs dir., Return a GuidelineRepository for the given pack id (cached).          Unknown/
 
 ### Community 24 - "Community 24"
 Cohesion: 0.08
-Nodes (23): str, MagicMock, _make_service(), Bug condition exploration test for duplicate Streamlit widget keys.  Property, Two calls with distinct key_prefix values must register distinct button keys., All four widget keys (2 selectboxes + 2 buttons) must be unique.          Simu, Verify that calling with no key_prefix uses the default assembly_* keys., No key_prefix argument → selectbox key must be assembly_case_select. (+15 more)
+Nodes (27): str, CaseService, MagicMock, Let the user pick an existing case or start a new multi-document case., Let the user pick an existing case or start a new multi-document case., select_or_create_case(), _make_service(), Bug condition exploration test for duplicate Streamlit widget keys.  Property (+19 more)
 
 ### Community 25 - "Community 25"
-Cohesion: 0.10
-Nodes (17): CaseDocument, str, Connection, EvidenceReference, int, Path, Row, str (+9 more)
+Cohesion: 0.09
+Nodes (21): Connection, EvidenceReference, int, Path, Row, str, bool, str (+13 more)
 
 ### Community 26 - "Community 26"
-Cohesion: 0.13
-Nodes (22): ExtractionResult, MedicalExtractionAgent: raw document text -> validated :class:`PatientCase`., Outcome of an extraction attempt.      Attributes:         case: The validate, Outcome of an extraction attempt.      Attributes:         case: The validate, Create the agent.          Args:             llm_client: Backend to use. Defa, Create the agent.          Args:             llm_client: Backend to use. Defa, LLMClient, Service layer for HealthAI.  All raw access to AI models lives here behind the (+14 more)
+Cohesion: 0.50
+Nodes (8): _case(), _detail(), Regression tests for the step-therapy intolerance/toxicity exception (Case 3)., test_case_3_mtx_toxicity_satisfies_step_therapy_and_approves(), test_mtx_contraindication_satisfies_step_therapy(), test_negated_mtx_toxicity_does_not_satisfy_step_therapy(), test_refused_methotrexate_still_fails_step_therapy_after_exception_added(), test_unattributed_hepatic_injury_does_not_satisfy_step_therapy()
 
 ### Community 27 - "Community 27"
-Cohesion: 0.07
-Nodes (15): bytes, str, MockOCRProvider, Deterministic OCR stand-in that decodes input bytes as text.      It does not, Deterministic OCR stand-in that decodes input bytes as text.      It does not, _png_pdf_bytes(), Tests for Milestone 9: OCR, ingestion, classification, vision evidence., Mock 'image bytes': the mock OCR provider decodes bytes as text. (+7 more)
+Cohesion: 0.04
+Nodes (36): str, bool, float, OCRCapability, OCRPageResult, bytes, str, new_ocr_id() (+28 more)
 
 ### Community 28 - "Community 28"
-Cohesion: 0.07
-Nodes (38): bool, bytes, int, str, _clear_derived(), clear_document(), document_signature(), ExtractionMeta (+30 more)
+Cohesion: 0.05
+Nodes (52): bool, bytes, int, str, _clear_derived(), clear_document(), document_signature(), ExtractionMeta (+44 more)
 
 ### Community 29 - "Community 29"
-Cohesion: 0.14
-Nodes (9): CaseService, _case_with_conflict(), Tests for Milestone 8: conflict resolution, authoritative facts, feedback.  Al, service(), TestAudit, TestCaseImpact, TestConflictResolution, TestReviewerFeedback (+1 more)
+Cohesion: 0.12
+Nodes (10): CaseService, _case_with_conflict(), Tests for Milestone 8: conflict resolution, authoritative facts, feedback.  Al, service(), TestAudit, TestCaseImpact, TestConflictResolution, TestReviewerFeedback (+2 more)
 
 ### Community 30 - "Community 30"
-Cohesion: 0.21
-Nodes (12): EvidenceQualityAssessment, EvidenceReference, float, str, _dedupe(), EvidenceQualityEngine, _norm(), EvidenceQualityEngine: score evidence and detect quality issues.  Per-referenc (+4 more)
+Cohesion: 0.08
+Nodes (28): bool, EvidenceQualityAssessment, EvidenceReference, float, str, Connection, EvidenceQualityAssessment, int (+20 more)
 
 ### Community 31 - "Community 31"
-Cohesion: 0.15
-Nodes (28): AppealLetter, bool, ClinicalGuideline, PatientCase, ReviewResult, str, AppealGenerationAgent: Claude-backed appeal-letter generation.  Inputs:  Patie, _build_appeal_reason() (+20 more)
+Cohesion: 0.14
+Nodes (30): AppealLetter, bool, ClinicalGuideline, PatientCase, ReviewResult, str, AppealAgentResult, AppealGenerationAgent: Claude-backed appeal-letter generation.  Inputs:  Patie (+22 more)
 
 ### Community 32 - "Community 32"
-Cohesion: 0.12
-Nodes (24): bytes, int, Path, str, bytes, ExtractedDocument, extract_pages_from_bytes(), extract_pdf() (+16 more)
+Cohesion: 0.40
+Nodes (3): int, Number of characters in the extracted text., Number of whitespace-separated words in the extracted text.
 
 ### Community 33 - "Community 33"
-Cohesion: 0.10
-Nodes (14): bool, bytes, OCRPageResult, str, _decode(), LocalTesseractOCRProvider, Offline OCR using pytesseract. Degrades gracefully if unavailable.      Depend, Offline OCR using pytesseract. Degrades gracefully if unavailable.      Depend (+6 more)
+Cohesion: 0.23
+Nodes (7): bytes, str, _decode(), OCR a single raster image; returns a one-element page list., OCR a single raster image; returns a one-element page list., OCR every page of a (scanned) PDF; returns one result per page., OCR every page of a (scanned) PDF; returns one result per page.
 
 ### Community 34 - "Community 34"
 Cohesion: 0.08
 Nodes (25): 10. Move SQLite storage out of the repo for real app usage, 11. Handle process lifecycle and DB locking more cleanly, 12. Decide desktop-app packaging strategy, 13. Keep expanding exact-file regression coverage, 14. Validate current docs against the code, 15. Improve operational diagnostics in the UI, 1. Finish the deterministic extraction and review hardening, 2. Make OCR behavior understandable in the UI (+17 more)
 
 ### Community 35 - "Community 35"
-Cohesion: 0.16
-Nodes (11): int, Path, PayerProfile, str, PayerStatus, Lifecycle status of a payer profile., PayerRepository, PayerRepository: load payer profiles from local JSON.  Profiles live under ``d (+3 more)
+Cohesion: 0.07
+Nodes (22): bool, bool, int, Path, PayerProfile, str, PayerStatus, Pydantic models for payer-specific guideline packs (Final Milestone).  A :clas (+14 more)
 
 ### Community 36 - "Community 36"
-Cohesion: 0.14
-Nodes (13): AI agents for HealthAI.  Agents orchestrate prompting + validation + retry. Al, build_extraction_messages(), build_user_prompt(), Prompt engineering for medical document extraction.  These prompts are tuned f, Render the schema example as pretty JSON for the prompt., Build the user-turn prompt for a single document.      Args:         document, Build the chat messages list (user turn) for the extraction request.      The, _schema_block() (+5 more)
+Cohesion: 0.15
+Nodes (12): build_extraction_messages(), build_user_prompt(), Prompt engineering for medical document extraction.  These prompts are tuned f, Render the schema example as pretty JSON for the prompt., Build the user-turn prompt for a single document.      Args:         document, Build the chat messages list (user turn) for the extraction request.      The, _schema_block(), str (+4 more)
 
 ### Community 37 - "Community 37"
 Cohesion: 0.13
-Nodes (14): str, DocumentType, _extension(), get_document_type(), File validation helpers.  Validation is kept separate from extraction so it ca, Raised when a file extension is not supported in Milestone 1., Return the lowercased extension (without the dot) for a filename., Validate that a filename has a supported extension.      Args:         filena (+6 more)
+Nodes (16): str, DocumentType, _extension(), get_document_type(), File validation helpers.  Validation is kept separate from extraction so it ca, Base class for validation problems., Raised when a file extension is not supported in Milestone 1., Return the lowercased extension (without the dot) for a filename. (+8 more)
 
 ### Community 38 - "Community 38"
-Cohesion: 0.06
-Nodes (32): _check_fields(), DocEvaluation, evaluate_document(), EvaluationReport, Evaluation framework for the MedicalExtractionAgent.  Measures, across the sam, Evaluate a single sample document against its ground truth., Run the full evaluation over a ground-truth mapping., Evaluation result for a single document. (+24 more)
+Cohesion: 0.04
+Nodes (63): _check_fields(), DocEvaluation, evaluate_document(), EvaluationReport, Evaluation framework for the MedicalExtractionAgent.  Measures, across the sam, Evaluate a single sample document against its ground truth., Run the full evaluation over a ground-truth mapping., Evaluation result for a single document. (+55 more)
 
 ### Community 39 - "Community 39"
-Cohesion: 0.11
-Nodes (27): str, _clean(), _clean_sentence(), EvidenceExtractor, _is_negated_context(), _is_placeholder_or_prose(), _label_pattern(), _labeled_value() (+19 more)
+Cohesion: 0.09
+Nodes (34): bool, CaseDocument, EvidenceReference, int, Pattern, str, _clean(), _clean_sentence() (+26 more)
 
 ### Community 40 - "Community 40"
 Cohesion: 0.07
@@ -387,40 +383,40 @@ Cohesion: 0.10
 Nodes (20): bool, int, DocumentSizeReport, DocumentSizeValidator, estimate_tokens(), Large-document protection: detect and warn (no chunking, no RAG).  ``DocumentS, Convenience: assess an :class:`ExtractedDocument`-like object., Severity of a size assessment. (+12 more)
 
 ### Community 42 - "Community 42"
-Cohesion: 0.11
-Nodes (16): ReviewResult, MockScenario, Categories of realistic Claude responses., _appeal_mock(), _approve_review(), Tests for AppealGenerationAgent (AI path + offline fallback + retry)., _review(), TestAIPath (+8 more)
+Cohesion: 0.07
+Nodes (24): bool, ReviewResult, MockClaudeClient, MockScenario, A scripted, realistic Claude stand-in implementing :class:`LLMClient`., Create the mock.          Args:             scenarios: A single scenario or a, Categories of realistic Claude responses., _appeal_mock() (+16 more)
 
 ### Community 43 - "Community 43"
-Cohesion: 0.14
-Nodes (27): LLMClient, str, describe_active_backend(), describe_patient_details_backend(), get_llm_client(), get_patient_details_client(), Backend selection for the LLM service layer.  Resolution order: 1. If ``HEALTH, Return a short human-readable description of the active backend. (+19 more)
+Cohesion: 0.25
+Nodes (5): int, Return per-page text using the embedded page delimiter., Return the text of a 1-indexed page (empty if out of range)., Return per-page text using the embedded page delimiter., Return the text of a 1-indexed page (empty if out of range).
 
 ### Community 44 - "Community 44"
-Cohesion: 0.13
-Nodes (15): bool, Human-readable one-paragraph summary of the case., Human-readable one-paragraph summary of the case., One-line human-readable summary., One-line human-readable summary., _hallucinated_response(), _invalid_json_response(), _markdown_json_response() (+7 more)
+Cohesion: 0.14
+Nodes (15): bool, Human-readable one-paragraph summary of the case., Human-readable one-paragraph summary of the case., One-line human-readable summary., One-line human-readable summary., One-line human-readable summary., _hallucinated_response(), _invalid_json_response() (+7 more)
 
 ### Community 45 - "Community 45"
 Cohesion: 0.08
 Nodes (25): 10. Known Risks, 11. Rules Future Engineers / Agents MUST Follow, 1. Project Summary, 2. Current Status, 3. Key Architectural Decisions, 4. Where To Start Reading (exact order), 5. Most Important Classes, 6. Most Important Data Models (`app/models`) (+17 more)
 
 ### Community 46 - "Community 46"
-Cohesion: 0.07
-Nodes (97): AppealExplanation, ApprovedEvidenceSet, AuditEvent, AuthoritativeFact, bytes, CaseRecord, ConflictReport, ConflictResolution (+89 more)
+Cohesion: 0.13
+Nodes (48): AppealExplanation, ApprovedEvidenceSet, AuditEvent, AuthoritativeFact, bytes, CaseRecord, ConflictReport, ConflictResolution (+40 more)
 
 ### Community 47 - "Community 47"
-Cohesion: 0.17
-Nodes (11): CaseDocument, EvidenceReference, str, ClaudeEvidenceExtractor, _normalize_quote(), ClaudeEvidenceExtractor: AI evidence extraction with an anti-fabrication gate., Convert validated items to references, enforcing the quote gate., Lowercase + collapse whitespace for tolerant verbatim matching. (+3 more)
+Cohesion: 0.57
+Nodes (6): _crohns_case(), _detail(), Regression tests for gastroenterology specialist recognition (Case 4).  Applie, test_case_4_crohns_transfer_summary_approves(), test_chiropractor_does_not_satisfy_specialist_criterion(), test_gastroenterologist_satisfies_specialist_criterion()
 
 ### Community 48 - "Community 48"
-Cohesion: 0.09
-Nodes (32): bool, PatientCase, ReviewResult, str, ClinicalGuideline, PatientCase, str, Clinical review engine.  This package is independent of the extraction engine. (+24 more)
+Cohesion: 0.19
+Nodes (20): ClinicalGuideline, PatientCase, str, build_review_messages(), build_review_selection_messages(), build_review_selection_prompt(), build_review_user_prompt(), _case_block() (+12 more)
 
 ### Community 49 - "Community 49"
-Cohesion: 0.15
-Nodes (11): CaseService, GovernanceSettings, str, TestValidationRunner, main(), int, str, CLI entry point for the validation runner (Final Milestone).  Usage:     pyth (+3 more)
+Cohesion: 0.08
+Nodes (23): Validation runner implementation (Final Milestone).  See :mod:`validation` (to, bool, float, int, Path, str, TestValidationRunner, Validation datasets + automated runner (Final Milestone).  This top-level pack (+15 more)
 
 ### Community 50 - "Community 50"
-Cohesion: 0.09
-Nodes (10): fake_state(), FakeSessionState, Tests for Streamlit session-state caching behavior.  These verify the caching, Dict subclass standing in for st.session_state.      Streamlit's SessionState, TestClearDocument, TestInitState, TestInvalidate, TestNewDocumentClearsCache (+2 more)
+Cohesion: 0.08
+Nodes (12): dict, fake_state(), FakeSessionState, Tests for Streamlit session-state caching behavior.  These verify the caching, Dict subclass standing in for st.session_state.      Streamlit's SessionState, TestClearDocument, TestInitState, TestInvalidate (+4 more)
 
 ### Community 51 - "Community 51"
 Cohesion: 0.16
@@ -431,8 +427,8 @@ Cohesion: 0.10
 Nodes (20): Bug Condition, Bug Details, Changes Required, Correctness Properties, Examples, Expected Behavior, Exploratory Bug Condition Checking, Fix Checking (+12 more)
 
 ### Community 53 - "Community 53"
-Cohesion: 0.25
-Nodes (5): OperationalMetrics, Operational metrics collection (local, derived from SQLite).  Computes lightwe, A snapshot of operational metrics., Compute and return the current metrics snapshot., Operational metrics.  Lightweight, local metrics derived from the cases + audi
+Cohesion: 0.15
+Nodes (7): MetricsCollector, OperationalMetrics, A snapshot of operational metrics., Compute :class:`OperationalMetrics` from local storage on demand., Compute and return the current metrics snapshot., Operational metrics.  Lightweight, local metrics derived from the cases + audi, TestAuditRepository
 
 ### Community 54 - "Community 54"
 Cohesion: 0.10
@@ -440,31 +436,27 @@ Nodes (19): Architecture, Architecture, Architecture, Example payer comparison (
 
 ### Community 55 - "Community 55"
 Cohesion: 0.10
-Nodes (8): CaseDocument, _doc(), Tests for the CaseAssemblyEngine: multi-doc, conflicts, missing info., TestAuthoritativeResolution, TestConflictDetection, TestHumiraWorkflowNonRegression, TestMissingInformation, TestMultiDocumentAssembly
+Nodes (7): _doc(), Tests for the CaseAssemblyEngine: multi-doc, conflicts, missing info., TestAuthoritativeResolution, TestConflictDetection, TestHumiraWorkflowNonRegression, TestMissingInformation, TestMultiDocumentAssembly
 
 ### Community 56 - "Community 56"
 Cohesion: 0.21
 Nodes (7): FeedbackTarget, ReviewerFeedback, str, FeedbackDataset: aggregate structured learning data for export.  Collects revi, Reviewer feedback collection + learning dataset (no ML).  Stores structured re, Append + query reviewer feedback., ReviewerFeedbackRepository
 
-### Community 57 - "Community 57"
-Cohesion: 0.14
-Nodes (13): Path, bytes, Path, extract_txt(), Extract text from raw TXT bytes.      Decoding is attempted as UTF-8 first, th, DocumentType, Pydantic models describing uploaded documents and their extracted text.  These, Supported document types for Milestone 1. (+5 more)
-
 ### Community 58 - "Community 58"
 Cohesion: 0.06
-Nodes (67): LLMClient, AppealLetter, AuditRepository, CaseLifecycle, CaseRecord, GovernanceComplianceReport, GovernanceSettings, str (+59 more)
+Nodes (83): ApprovedEvidenceSet, AuditRepository, CaseAssemblyEngine, CaseDocumentRepository, CaseLifecycle, EvidenceQualityRepository, EvidenceRepository, EvidenceReviewDecisionRepository (+75 more)
 
 ### Community 59 - "Community 59"
 Cohesion: 0.16
 Nodes (6): _case(), Tests for the Final Milestone: payer packs, operational health, validation.  C, Rejected evidence is still excluded when reviewing under a payer pack., TestOperationalHealth, TestPayerOpsExports, TestPayerReviews
 
 ### Community 60 - "Community 60"
-Cohesion: 0.12
-Nodes (40): PatientCase, str, ClinicalReviewEngine, GuidelineCriterion, A single required medical-necessity criterion., ClinicalReviewEngine, Rule-based clinical guideline review., Rule-based clinical guideline review. (+32 more)
+Cohesion: 0.17
+Nodes (31): PatientCase, ClinicalReviewEngine, ClinicalReviewEngine, Rule-based clinical guideline review., Rule-based clinical guideline review., Rule-based clinical guideline review., Rule-based clinical guideline review., Rule-based clinical guideline review. (+23 more)
 
 ### Community 61 - "Community 61"
-Cohesion: 0.22
-Nodes (22): str, _clean_name(), _clean_value(), _detect_decision(), _extract_denial_reason(), _extract_document_text(), _field_value(), _find() (+14 more)
+Cohesion: 0.20
+Nodes (23): int, str, _clean_name(), _clean_value(), _detect_decision(), _extract_denial_reason(), _extract_document_text(), _field_value() (+15 more)
 
 ### Community 62 - "Community 62"
 Cohesion: 0.10
@@ -474,25 +466,21 @@ Nodes (24): bytes, Path, local_agent(), pdf_bytes(), Shared pytest fixtures for 
 Cohesion: 0.12
 Nodes (16): `audit_events` (M5), `authoritative_facts` (M8), `case_documents` (M6/7), `cases` (M5), `conflict_resolutions` (M8) — append-only, Engine & conventions, `evidence_quality` (M10), `evidence_references` (M6/7) — live evidence store (+8 more)
 
-### Community 64 - "Community 64"
-Cohesion: 0.18
-Nodes (14): bool, ConflictReport, EvidenceQualityAssessment, GovernanceComplianceReport, GovernanceSettings, str, ComplianceViolation, EvidenceMode (+6 more)
-
 ### Community 65 - "Community 65"
 Cohesion: 0.11
 Nodes (16): AuditActor, AuditEvent, int, Row, str, Return all events for a case, oldest first., Return all events, newest first (optionally limited)., Return all events of a given type, newest first. (+8 more)
 
 ### Community 66 - "Community 66"
-Cohesion: 0.22
-Nodes (5): bool, float, int, Aggregate validation outcome., ValidationReport
+Cohesion: 0.14
+Nodes (24): AppealExplanation, AppealLetter, ApprovedEvidenceSet, EvidenceQualityAssessment, EvidenceReference, EvidenceReviewDecision, ReviewExplanation, ReviewResult (+16 more)
 
 ### Community 67 - "Community 67"
 Cohesion: 0.13
 Nodes (14): Architecture, Classification architecture, Example scanned-document workflow, Ingestion architecture, Milestone 9 - OCR + Intelligent Document Ingestion + Vision-Based Evidence, OCR accuracy limitations, OCR architecture, Quality gates (+6 more)
 
 ### Community 68 - "Community 68"
-Cohesion: 0.06
-Nodes (53): CaseRecord, CaseService, str, CaseService, str, str, str, ExportBlockedError (+45 more)
+Cohesion: 0.07
+Nodes (44): str, str, str, MetricsCollector, Assembly tabs: Document Assembly, Evidence Explorer, Conflict Review (M6/7)., render_conflict_review_tab(), render_document_assembly_tab(), render_evidence_explorer_tab() (+36 more)
 
 ### Community 69 - "Community 69"
 Cohesion: 0.14
@@ -507,15 +495,15 @@ Cohesion: 0.13
 Nodes (14): 1. Clone / open the project, 2. Create and activate a virtual environment, 3. Install dependencies, Features, HealthAI, Installation, Project structure, Requirements (+6 more)
 
 ### Community 72 - "Community 72"
-Cohesion: 0.14
-Nodes (6): Tests for Milestone 11: governance, validated evidence, analytics, compliance., _scored_case(), TestAnalytics, TestCompliance, TestReviewAppealIntegration, TestValidatedEvidenceMode
+Cohesion: 0.12
+Nodes (5): _scored_case(), TestAnalytics, TestCompliance, TestExport, TestValidatedEvidenceMode
 
 ### Community 73 - "Community 73"
 Cohesion: 0.36
 Nodes (11): str, _case(), _detail(), Regression tests for deterministic clinical vocabulary coverage., _review(), test_matched_phrase_links_to_source_evidence_reference(), test_negated_specialist_does_not_satisfy_specialist(), test_negated_tb_screen_does_not_satisfy_tb_screen() (+3 more)
 
 ### Community 74 - "Community 74"
-Cohesion: 0.14
+Cohesion: 0.13
 Nodes (14): int, str, str, FeedbackDataset, Builds an exportable learning dataset from the local stores., Aggregate all learning data for a single case., Aggregate learning data across multiple cases., Return the per-case learning dataset as JSON text. (+6 more)
 
 ### Community 75 - "Community 75"
@@ -531,16 +519,16 @@ Cohesion: 0.15
 Nodes (12): Architecture, Auditability, Case impact, Feedback architecture, Known limitations / risks, Milestone 8 - Human Conflict Resolution + Reviewer Feedback Learning, Quality requirements met, Resolution architecture (+4 more)
 
 ### Community 78 - "Community 78"
-Cohesion: 0.22
-Nodes (6): Connection, EvidenceReviewDecision, int, Path, Row, str
+Cohesion: 0.31
+Nodes (4): EvidenceReviewDecision, int, Row, str
 
 ### Community 79 - "Community 79"
 Cohesion: 0.15
 Nodes (3): Unit tests for the AppealLetter pydantic model., TestDefaultsAndCoercion, TestDerived
 
 ### Community 80 - "Community 80"
-Cohesion: 0.38
-Nodes (4): _doc(), _evidence_payload(), _fabricated_payload(), TestClaudeEvidenceExtractor
+Cohesion: 0.06
+Nodes (25): str, object, str, ClaudeEvidenceExtractor, _normalize_quote(), Convert validated items to references, enforcing the quote gate., Lowercase + collapse whitespace for tolerant verbatim matching., Extract EvidenceReference objects with Claude + an anti-fabrication gate. (+17 more)
 
 ### Community 81 - "Community 81"
 Cohesion: 0.17
@@ -583,20 +571,16 @@ Cohesion: 0.17
 Nodes (11): aliases, applicable_cpt, applicable_icd10, contraindications, diagnosis, guideline_id, required_criteria, service_name (+3 more)
 
 ### Community 91 - "Community 91"
-Cohesion: 0.06
-Nodes (44): bool, CaseDocument, Connection, int, Path, Row, str, AuditRepository (+36 more)
+Cohesion: 0.21
+Nodes (6): bool, CaseDocument, int, Row, str, Insert (or replace) a document.
 
 ### Community 92 - "Community 92"
-Cohesion: 0.06
-Nodes (32): bool, float, int, OCRCapability, Connection, int, OCRPageResult, Path (+24 more)
+Cohesion: 0.07
+Nodes (27): bool, CaseDocument, EvidenceReference, CaseDocument, str, CaseDocument, EvidenceReference, str (+19 more)
 
 ### Community 93 - "Community 93"
 Cohesion: 0.17
 Nodes (9): Connection, GovernanceSettings, Path, str, GovernanceSettingsRepository, Load / save the single global :class:`GovernanceSettings` record., Return the current settings (defaults if none stored yet)., Upsert the global settings row. (+1 more)
-
-### Community 94 - "Community 94"
-Cohesion: 0.12
-Nodes (16): CaseRecord, GovernanceSettings, HumanDecision, PatientCase, ReviewResult, str, Record a human-review decision and update status accordingly., Attach extraction output and move to EXTRACTED. (+8 more)
 
 ### Community 95 - "Community 95"
 Cohesion: 0.17
@@ -615,20 +599,12 @@ Cohesion: 0.18
 Nodes (10): Architecture, Database schema (SQLite, local), Export package, Known limitations / risks, Milestone 5 - Case Management, Human Review, Auditability & Operational Visibility, Operational metrics, Scope, Streamlit (+2 more)
 
 ### Community 99 - "Community 99"
-Cohesion: 0.20
-Nodes (7): str, One-line human-readable summary of the appeal., Return the letter as Markdown (letter body is already formatted)., Return the letter as plain text., One-line human-readable summary of the appeal., Return the letter as Markdown (letter body is already formatted)., Return the letter as plain text.
+Cohesion: 0.13
+Nodes (11): str, Pydantic model for a generated prior-authorization appeal letter.  An :class:`, One-line human-readable summary of the appeal., Return the letter as Markdown (letter body is already formatted)., Return the letter as plain text., One-line human-readable summary of the appeal., Return the letter as Markdown (letter body is already formatted)., Return the letter as plain text. (+3 more)
 
 ### Community 100 - "Community 100"
 Cohesion: 0.11
 Nodes (18): Core layers, Current Architecture, Current Architecture Strengths, Current Architecture Weaknesses, Current Persistence Model, Current Product Scope, Current Runtime Backends, Current UI State (+10 more)
-
-### Community 101 - "Community 101"
-Cohesion: 0.20
-Nodes (11): GovernanceSettings, str, Synthesize a PatientCase from ONLY the permitted evidence., Synthesize a PatientCase from ONLY the permitted evidence., Generate a review constrained to governance-approved evidence., Generate a review constrained to governance-approved evidence., Generate an appeal constrained to governance-approved evidence., Generate an appeal constrained to governance-approved evidence. (+3 more)
-
-### Community 102 - "Community 102"
-Cohesion: 0.15
-Nodes (11): bool, str, ConflictReport, ConflictSeverity, FieldConflict, Pydantic models for evidence traceability.  An :class:`EvidenceReference` ties, All detected conflicts for a case., A short human-readable citation, e.g. '(clinical_note.pdf, p.4)'. (+3 more)
 
 ### Community 103 - "Community 103"
 Cohesion: 0.20
@@ -639,20 +615,16 @@ Cohesion: 0.20
 Nodes (9): 1. Configuration, 2. Backups, 3. Database management, 4. Security assumptions, 5. PHI handling assumptions, 6. Operational limitations, 7. Human-review requirements, 8. Pre-launch validation checklist (+1 more)
 
 ### Community 105 - "Community 105"
-Cohesion: 0.23
-Nodes (8): Connection, EvidenceQualityAssessment, int, Path, Row, str, EvidenceQualityRepository, Persist + query evidence quality assessments.
-
-### Community 106 - "Community 106"
-Cohesion: 0.24
-Nodes (11): object, str, extract_json_object(), extract_json_payload(), _first_balanced_object(), Shared JSON-parsing + retry utilities for LLM-backed agents.  Milestone 12 (ar, Build the standard corrective user message for a retry attempt., Return the first balanced ``{...}`` span parsed as a dict, or None. (+3 more)
+Cohesion: 0.18
+Nodes (9): Connection, int, OCRPageResult, Path, Row, str, OCRResultRepository, SQLite repository for OCR page results (Milestone 9). (+1 more)
 
 ### Community 107 - "Community 107"
-Cohesion: 0.12
-Nodes (32): AuditRepository, AuthoritativeFact, AuthoritativeFactRepository, CaseLifecycle, ConflictResolution, ConflictResolutionEngine, ConflictResolutionRepository, FeedbackTarget (+24 more)
+Cohesion: 0.04
+Nodes (140): _parse_ts(), QualityAnalyticsEngine: evidence-quality + workflow analytics.  Computes, from, Connection, int, Path, str, AppealLetter, AuditRepository (+132 more)
 
 ### Community 109 - "Community 109"
-Cohesion: 0.39
-Nodes (17): bool, ClinicalSignal, _current_diagnosis_values(), _evaluate_with_medspacy(), _has_any(), _is_current_biologic(), _is_educational_text(), _is_tb_absence() (+9 more)
+Cohesion: 0.09
+Nodes (55): bool, PatientCase, str, ClinicalSignal, GuidelineCriterion, GuidelineCriterion, A single required medical-necessity criterion., _contains_any() (+47 more)
 
 ### Community 110 - "Community 110"
 Cohesion: 0.25
@@ -672,35 +644,35 @@ Nodes (8): Configuration (environment variables), Creating the environment, Depe
 
 ### Community 114 - "Community 114"
 Cohesion: 0.06
-Nodes (34): str, str, str, str, str, Computed human-review workqueue buckets., WorkqueueBucket, Enum (+26 more)
+Nodes (29): float, str, str, str, str, str, Pydantic model for audit events.  An :class:`AuditEvent` records a significant, _utc_now_iso() (+21 more)
 
 ### Community 115 - "Community 115"
-Cohesion: 0.19
-Nodes (9): Validation runner implementation (Final Milestone).  See :mod:`validation` (to, Path, Validation datasets + automated runner (Final Milestone).  This top-level pack, load_default_scenarios(), ValidationRunner: exercise the full pipeline against mock scenarios.  For each, Load scenario dicts from the dataset JSON., Outcome of one (scenario, payer) check., _utc_now_iso() (+1 more)
+Cohesion: 0.07
+Nodes (42): AuditRepository, bytes, CaseDocument, CaseDocumentRepository, CaseLifecycle, DocumentCategory, float, IngestionResult (+34 more)
 
 ### Community 116 - "Community 116"
-Cohesion: 0.23
-Nodes (12): normalize_clinical_text(), _normalize_diagnosis(), normalize_patient_case(), _normalize_service(), _normalize_text(), Post-extraction normalization for structured patient cases.  The extraction prom, Normalize common clinical misspellings in free-text evidence., Return a copy of ``case`` with canonical clinical spellings applied. (+4 more)
+Cohesion: 0.31
+Nodes (10): normalize_clinical_text(), _normalize_diagnosis(), normalize_patient_case(), _normalize_service(), _normalize_text(), Post-extraction normalization for structured patient cases.  The extraction prom, Normalize common clinical misspellings in free-text evidence., Return a copy of ``case`` with canonical clinical spellings applied. (+2 more)
 
 ### Community 117 - "Community 117"
 Cohesion: 0.29
 Nodes (6): Case status lifecycle, CaseService responsibilities, End-to-end workflow (happy path, scanned multi-document case), HealthAI — Workflow Map, Key operations (each records audit events), UI tab → workflow stage
 
 ### Community 118 - "Community 118"
-Cohesion: 0.13
-Nodes (20): Any, Any, bool, str, _bool_ext(), canonical_diagnosis(), _has_any(), provider_role() (+12 more)
+Cohesion: 0.07
+Nodes (44): Any, Any, bool, str, _bool_ext(), canonical_diagnosis(), ClinicalSignal, extract_clinical_signals() (+36 more)
 
 ### Community 119 - "Community 119"
 Cohesion: 0.29
 Nodes (6): Bug Analysis, Bugfix Requirements Document, Current Behavior (Defect), Expected Behavior (Correct), Introduction, Unchanged Behavior (Regression Prevention)
 
 ### Community 120 - "Community 120"
-Cohesion: 0.21
-Nodes (9): CaseDocument, OCRPageResult, str, _document_ocr_status(), _ext(), Return reviewer-facing OCR provenance for every document in a case., Attach a supporting document to a case and record an audit event.          The, Attach a supporting document to a case and record an audit event.          The (+1 more)
+Cohesion: 0.13
+Nodes (15): main(), HealthAI Streamlit entry point.  Run locally with:      streamlit run stream, Render the full Streamlit dashboard., Show the bundled sample documents so users can try the app quickly., Show the bundled sample documents so users can try the app quickly., Validate + extract an upload into session state (cached).      Returns True if, Validate + extract an upload into session state (cached).      Returns True if, Render the full Streamlit dashboard. (+7 more)
 
 ### Community 121 - "Community 121"
-Cohesion: 0.10
-Nodes (33): ClinicalGuideline, PatientCase, ReviewResult, str, int, str, ClinicalGuideline, float (+25 more)
+Cohesion: 0.05
+Nodes (58): ClinicalGuideline, PatientCase, ReviewResult, str, int, ClinicalGuideline, float, GuidelineRepository (+50 more)
 
 ### Community 122 - "Community 122"
 Cohesion: 0.29
@@ -735,8 +707,8 @@ Cohesion: 0.18
 Nodes (9): AppealLetter, str, UnifiedCaseContext, Evidence verification for generated appeal letters., Attach verification metadata, correcting unsupported sections., Append a correction notice for unsupported appeal sections., _rewrite_letter_text(), AppealVerificationResult (+1 more)
 
 ### Community 130 - "Community 130"
-Cohesion: 0.25
-Nodes (4): bool, get_payer_repository(), Return a cached repository loaded from the default payers dir., TestPayerRepository
+Cohesion: 0.09
+Nodes (36): bytes, int, Path, str, bytes, Path, bytes, Path (+28 more)
 
 ### Community 131 - "Community 131"
 Cohesion: 0.33
@@ -750,33 +722,21 @@ Nodes (5): Accuracy note, Contents, HealthAI — Architecture Documentation, Pla
 Cohesion: 0.33
 Nodes (4): bytes, CaseRecord, Delegate to :func:`app.cases.export.build_export_files`., Delegate to :func:`app.cases.export.build_export_zip`.
 
-### Community 134 - "Community 134"
-Cohesion: 0.17
-Nodes (5): str, Score every evidence reference for a case and persist the results., Build reviewer-workbench views (evidence + quality + decisions)., Evidence usable downstream: not rejected (approved or undecided).          Onc, Assemble all of a case's documents into a UnifiedCaseContext.          Persist
-
 ### Community 135 - "Community 135"
 Cohesion: 0.33
 Nodes (5): Architecture, Data flow, Explicitly out of scope (future milestones), Milestone 1 - Document Extraction, Scope
 
 ### Community 136 - "Community 136"
-Cohesion: 0.22
-Nodes (6): ClinicalGuideline, GuidelineRepository, Path, str, List pack ids: DEFAULT plus any subdirectory of the packs dir., Return a GuidelineRepository for the given pack id (cached).          Unknown/
+Cohesion: 0.14
+Nodes (14): AppealLetter, CaseLifecycle, GovernanceSettings, PayerProfile, ReviewResult, str, Prefer the matched guideline's version; fall back to the pack version., Generate a governed review using the payer's guideline pack. (+6 more)
 
 ### Community 137 - "Community 137"
 Cohesion: 0.25
 Nodes (10): AppealLetter, ReviewResult, str, UnifiedCaseContext, annotate_appeal(), annotate_review(), _collect_ids(), Traceability linking: attach evidence references to review and appeal.  Given (+2 more)
 
-### Community 138 - "Community 138"
-Cohesion: 0.20
-Nodes (10): extract_clinical_signals(), get_clinical_nlp(), Extract configured clinical targets with ConText attributes., Return a cached MedSpaCy pipeline, or None if initialization fails., Extract configured clinical targets with ConText attributes., Return a cached MedSpaCy pipeline, or None if initialization fails., Extract configured clinical targets with ConText attributes., Return a cached MedSpaCy pipeline, or None if initialization fails. (+2 more)
-
 ### Community 139 - "Community 139"
 Cohesion: 0.06
-Nodes (23): bool, float, int, ReviewResult, str, _coerce_to_review_result(), evaluate_scenario(), Evaluation framework for the clinical review engine / agent.  Measures across (+15 more)
-
-### Community 140 - "Community 140"
-Cohesion: 0.40
-Nodes (3): int, Number of characters in the extracted text., Number of whitespace-separated words in the extracted text.
+Nodes (36): CaseDocument, str, DocumentCategory, str, bool, Run review evaluation over labeled scenarios., run_review_evaluation(), GuidelineReviewAgent (+28 more)
 
 ### Community 141 - "Community 141"
 Cohesion: 0.25
@@ -786,77 +746,93 @@ Nodes (5): str, Pydantic models for case management and human review.  A :class:
 Cohesion: 0.28
 Nodes (3): bool, Structured result from a safety-gate check., SafetyGateDecision
 
-### Community 143 - "Community 143"
-Cohesion: 0.29
-Nodes (6): float, str, _clamp(), new_assessment_id(), Pydantic model for evidence quality assessment.  An :class:`EvidenceQualityAss, _utc_now_iso()
-
 ### Community 144 - "Community 144"
-Cohesion: 0.50
-Nodes (3): EvidenceReference, str, All evidence references for a given logical fact.
+Cohesion: 0.40
+Nodes (4): EvidenceReference, str, All evidence references for a given logical fact., All evidence references for a given logical fact.
 
 ### Community 145 - "Community 145"
 Cohesion: 0.25
 Nodes (7): computedHash, skillPath, source, sourceType, skills, find-skills, version
 
 ### Community 148 - "Community 148"
-Cohesion: 0.18
-Nodes (6): bool, Payer-specific guideline packs (Final Milestone).  Makes the platform configur, get_pack_resolver(), GuidelinePackResolver: build a GuidelineRepository for a payer pack.  A "pack", Return a cached default :class:`GuidelinePackResolver`., TestGuidelinePacks
-
-### Community 149 - "Community 149"
-Cohesion: 0.33
-Nodes (5): str, new_evidence_id(), Pydantic model for a single piece of source-backed evidence.  An :class:`Evide, Human-readable citation, e.g. '(clinical_note.pdf, p.4)'., _utc_now_iso()
+Cohesion: 0.07
+Nodes (24): bool, ClinicalGuideline, int, Path, PatientCase, str, Clinical guideline library.  Loads guideline definitions from local JSON (no d, get_default_repository() (+16 more)
 
 ### Community 150 - "Community 150"
-Cohesion: 0.40
-Nodes (4): Pydantic model for a generated prior-authorization appeal letter.  An :class:`, Return the current UTC time as an ISO-8601 string., Return the current UTC time as an ISO-8601 string., _utc_now_iso()
+Cohesion: 0.04
+Nodes (37): str, Attach a supporting document to a case and record an audit event., Attach a supporting document to a case and record an audit event., Attach a supporting document to a case and record an audit event., Ingest any supported upload (TXT/PDF/PNG/JPG/JPEG) into a case., Ingest any supported upload (TXT/PDF/PNG/JPG/JPEG) into a case., Ingest any supported upload (TXT/PDF/PNG/JPG/JPEG) into a case., Record a reviewer APPROVE/REJECT/FLAG decision on a piece of evidence. (+29 more)
 
 ### Community 152 - "Community 152"
-Cohesion: 0.40
-Nodes (4): Determine recommendation and confidence., Determine recommendation and confidence., Determine recommendation and confidence., Determine recommendation and confidence.
-
-### Community 158 - "Community 158"
-Cohesion: 0.50
-Nodes (3): str, Pydantic model for audit events.  An :class:`AuditEvent` records a significant, _utc_now_iso()
+Cohesion: 0.29
+Nodes (6): Determine recommendation and confidence., Determine recommendation and confidence., Determine recommendation and confidence., Determine recommendation and confidence., Determine recommendation and confidence., Determine recommendation and confidence.
 
 ### Community 160 - "Community 160"
 Cohesion: 0.50
 Nodes (3): bool, True if a non-trivial letter body was produced., True if a non-trivial letter body was produced.
-
-### Community 164 - "Community 164"
-Cohesion: 0.50
-Nodes (3): str, Pydantic model for the operational health report (Final Milestone).  An :class, _utc_now_iso()
 
 ### Community 165 - "Community 165"
 Cohesion: 0.67
 Nodes (3): _chat(), _client(), Minimal Vertex AI Gemini chat app using google-genai + Streamlit.  This is inten
 
 ### Community 169 - "Community 169"
-Cohesion: 0.50
-Nodes (3): int, Total criteria considered (matched + missing)., Total criteria considered (matched + missing).
+Cohesion: 0.40
+Nodes (4): int, Total criteria considered (matched + missing)., Total criteria considered (matched + missing)., Total criteria considered (matched + missing).
 
-### Community 172 - "Community 172"
-Cohesion: 0.13
-Nodes (24): bool, CaseDocument, EvidenceExtractor, PatientCase, UnifiedCaseContext, bool, CaseAssemblyEngine: merge multi-document evidence into a unified context.  Res, Lower case confidence when unresolved conflicts remain. (+16 more)
+### Community 170 - "Community 170"
+Cohesion: 0.50
+Nodes (3): Map free-form recommendation text to the enum., Map free-form recommendation text to the enum., Map free-form recommendation text to the enum.
+
+### Community 173 - "Community 173"
+Cohesion: 0.15
+Nodes (10): str, bool, CaseStatus, __getattr__(), Case management.  Tracks prior-authorization cases through their lifecycle, pe, Lazily expose heavy symbols to avoid an import cycle (PEP 562)., can_transition(), Case status-transition rules.  Defines the legal lifecycle transitions for a : (+2 more)
+
+### Community 174 - "Community 174"
+Cohesion: 0.22
+Nodes (8): Regression coverage for Streamlit service/thread ownership., Streamlit must not share one sqlite-backed service across threads., Reset must release the sqlite handle before deleting the DB file., A service created in one thread must not back UI calls in another., A service created in one thread must not back UI calls in another., test_case_service_cache_is_thread_local(), test_reset_case_service_closes_and_drops_thread_local_service(), test_thread_local_services_do_not_share_sqlite_connections()
+
+### Community 181 - "Community 181"
+Cohesion: 0.14
+Nodes (16): CaseRecord, str, bucket_for_case(), Computed human-review workqueue buckets., Return the highest-priority workqueue bucket for a case., WorkqueueBucket, Enum, Pydantic models describing uploaded documents and their extracted text.  These (+8 more)
+
+### Community 186 - "Community 186"
+Cohesion: 0.50
+Nodes (3): float, Fraction of core fields that were populated (0.0-1.0)., Fraction of core fields that were populated (0.0-1.0).
+
+### Community 187 - "Community 187"
+Cohesion: 0.50
+Nodes (3): bool, True if this backend calls a real AI model, False for heuristics., True if this backend calls a real AI model, False for heuristics.
+
+### Community 188 - "Community 188"
+Cohesion: 0.50
+Nodes (3): Assign a human reviewer to a case., Assign a human reviewer to a case., Assign a human reviewer to a case.
+
+### Community 199 - "Community 199"
+Cohesion: 0.24
+Nodes (6): new_case_id(), Generate a unique case id., Create a NEW case and record DOCUMENT_UPLOADED + creation., Create a NEW case and record DOCUMENT_UPLOADED + creation., Create a NEW case and record DOCUMENT_UPLOADED + creation., TestCaseRepository
+
+### Community 216 - "Community 216"
+Cohesion: 0.50
+Nodes (4): Render document metadata as a row of metrics., Render document metadata as a row of metrics., Render document metadata as a row of metrics., _render_metadata()
 
 ## Knowledge Gaps
 - **558 isolated node(s):** `bool`, `bool`, `int`, `str`, `bool` (+553 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **18 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **19 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PatientCase` connect `Community 12` to `Community 0`, `Community 1`, `Community 3`, `Community 4`, `Community 5`, `Community 8`, `Community 9`, `Community 10`, `Community 139`, `Community 141`, `Community 14`, `Community 15`, `Community 144`, `Community 22`, `Community 23`, `Community 26`, `Community 31`, `Community 38`, `Community 42`, `Community 172`, `Community 44`, `Community 46`, `Community 48`, `Community 58`, `Community 60`, `Community 73`, `Community 91`, `Community 94`, `Community 101`, `Community 107`, `Community 109`, `Community 114`, `Community 116`, `Community 121`?**
-  _High betweenness centrality (0.118) - this node is a cross-community bridge._
-- **Why does `CaseService` connect `Community 14` to `Community 0`, `Community 1`, `Community 2`, `Community 130`, `Community 8`, `Community 9`, `Community 10`, `Community 12`, `Community 146`, `Community 147`, `Community 148`, `Community 23`, `Community 27`, `Community 29`, `Community 157`, `Community 161`, `Community 46`, `Community 49`, `Community 182`, `Community 58`, `Community 59`, `Community 64`, `Community 66`, `Community 68`, `Community 72`, `Community 74`, `Community 80`, `Community 91`, `Community 92`, `Community 107`, `Community 108`, `Community 115`?**
-  _High betweenness centrality (0.091) - this node is a cross-community bridge._
-- **Why does `EvidenceReference` connect `Community 46` to `Community 0`, `Community 1`, `Community 3`, `Community 134`, `Community 6`, `Community 8`, `Community 7`, `Community 11`, `Community 14`, `Community 144`, `Community 16`, `Community 149`, `Community 22`, `Community 30`, `Community 39`, `Community 172`, `Community 47`, `Community 51`, `Community 80`, `Community 91`, `Community 92`, `Community 108`, `Community 114`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
-- **Are the 288 inferred relationships involving `PatientCase` (e.g. with `DocEvaluation` and `EvaluationReport`) actually correct?**
-  _`PatientCase` has 288 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `CaseService` connect `Community 14` to `Community 1`, `Community 2`, `Community 4`, `Community 6`, `Community 7`, `Community 9`, `Community 10`, `Community 139`, `Community 12`, `Community 16`, `Community 150`, `Community 24`, `Community 27`, `Community 29`, `Community 30`, `Community 35`, `Community 173`, `Community 46`, `Community 174`, `Community 49`, `Community 53`, `Community 183`, `Community 57`, `Community 58`, `Community 59`, `Community 66`, `Community 68`, `Community 199`, `Community 72`, `Community 74`, `Community 80`, `Community 92`, `Community 107`, `Community 115`?**
+  _High betweenness centrality (0.137) - this node is a cross-community bridge._
+- **Why does `PatientCase` connect `Community 12` to `Community 1`, `Community 3`, `Community 4`, `Community 5`, `Community 6`, `Community 8`, `Community 9`, `Community 10`, `Community 139`, `Community 141`, `Community 14`, `Community 144`, `Community 148`, `Community 22`, `Community 150`, `Community 26`, `Community 31`, `Community 38`, `Community 42`, `Community 44`, `Community 173`, `Community 47`, `Community 48`, `Community 53`, `Community 57`, `Community 58`, `Community 186`, `Community 60`, `Community 199`, `Community 73`, `Community 107`, `Community 109`, `Community 114`, `Community 116`, `Community 121`?**
+  _High betweenness centrality (0.120) - this node is a cross-community bridge._
+- **Why does `EvidenceReference` connect `Community 46` to `Community 0`, `Community 1`, `Community 3`, `Community 4`, `Community 7`, `Community 11`, `Community 139`, `Community 14`, `Community 144`, `Community 16`, `Community 150`, `Community 22`, `Community 30`, `Community 39`, `Community 51`, `Community 58`, `Community 66`, `Community 80`, `Community 92`, `Community 107`, `Community 114`, `Community 115`?**
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
+- **Are the 299 inferred relationships involving `PatientCase` (e.g. with `DocEvaluation` and `EvaluationReport`) actually correct?**
+  _`PatientCase` has 299 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 240 inferred relationships involving `ReviewResult` (e.g. with `AppealLetter` and `bool`) actually correct?**
+  _`ReviewResult` has 240 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 253 inferred relationships involving `AuditEventType` (e.g. with `QualityAnalytics` and `QualityAnalyticsEngine`) actually correct?**
   _`AuditEventType` has 253 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 230 inferred relationships involving `ReviewResult` (e.g. with `AppealLetter` and `bool`) actually correct?**
-  _`ReviewResult` has 230 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 200 inferred relationships involving `AuditRepository` (e.g. with `QualityAnalytics` and `QualityAnalyticsEngine`) actually correct?**
   _`AuditRepository` has 200 INFERRED edges - model-reasoned connections that need verification._
