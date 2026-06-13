@@ -1,0 +1,19 @@
+default:
+  image: python:3.12-slim
+
+stages:
+  - build_graph
+
+update_project_graph:
+  stage: build_graph
+  script:
+    # 1. Install project dependencies
+    - pip install -r requirements.txt
+    
+    # 2. Execute the python graphify module directly on the agent runner
+    - python -m graphify
+    
+    # 3. Check if graphify made any structural changes to graphify-out/
+    - git status
+  only:
+    - main
