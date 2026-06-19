@@ -60,25 +60,29 @@ If only 3.13 is available, the same steps work with `py -3.13` (experimental).
 |------------------------|------------------------------------------------------|--------------------|
 | `ANTHROPIC_API_KEY`    | Enables the real Claude backend.                     | unset (offline)    |
 | `GOOGLE_GENAI_USE_VERTEXAI` | Routes modern `google-genai` calls to Vertex AI. | set by `GeminiClient` when Gemini is selected |
-| `GOOGLE_CLOUD_PROJECT` | Vertex AI project for Gemini. | `gen-lang-client-0121983409` when Gemini is selected |
-| `GOOGLE_CLOUD_LOCATION` | Vertex AI region for Gemini. | `us-central1` |
+| `GOOGLE_CLOUD_PROJECT` | Vertex AI project for Gemini. | `skilled-loader-468413-j6` when Gemini is selected |
+| `GOOGLE_CLOUD_LOCATION` | Vertex AI location for Gemini. | `global` |
 | `HEALTHAI_GEMINI_USE_VERTEXAI` | Set `false` only to force AI Studio API-key mode. | `true` |
 | `GEMINI_API_KEY` / `GOOGLE_API_KEY` | AI Studio key fallback when Vertex mode is disabled. | unset |
 | `HEALTHAI_LLM_BACKEND` | Force a backend: `anthropic`, `gemini`, or `local`.  | auto-detect        |
 | `HEALTHAI_CLAUDE_MODEL`| Override the Claude model id.                        | `claude-opus-4-8`  |
-| `HEALTHAI_GEMINI_MODEL`| Override the Gemini model id.                        | `gemini-2.5-flash` |
+| `HEALTHAI_GEMINI_MODEL`| Override the Gemini model id.                        | `gemini-3.5-flash` |
+| `HEALTHAI_GEMINI_THINKING_BUDGET` | Thinking-token budget for Gemini models. Set `0` for deterministic structured JSON responses. | `0` |
 
 ### Gemini on Vertex AI with ADC
 
 ```powershell
 gcloud auth application-default login
-gcloud config set project gen-lang-client-0121983409
+gcloud config set project skilled-loader-468413-j6
 
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\Users\jakes\Downloads\skilled-loader-468413-j6-50ec35997585.json"
+$env:GOOGLE_CLOUD_PROJECT = "skilled-loader-468413-j6"
+$env:GOOGLE_CLOUD_LOCATION = "global"
 $env:HEALTHAI_LLM_BACKEND = "gemini"
 $env:HEALTHAI_STRUCTURED_EXTRACTION_BACKEND = "gemini"
 $env:HEALTHAI_CLINICAL_REASONING_BACKEND = "gemini"
 $env:HEALTHAI_APPEAL_DRAFTING_BACKEND = "gemini"
-$env:HEALTHAI_GEMINI_MODEL = "gemini-2.5-flash"
+$env:HEALTHAI_GEMINI_MODEL = "gemini-3.5-flash"
 
 streamlit run app\main.py
 ```
@@ -86,3 +90,6 @@ streamlit run app\main.py
 No Gemini API key is required in Vertex mode. Authentication comes from local
 Application Default Credentials. API keys, if used for other providers, are read
 from the environment only; no key is ever written to disk or committed.
+
+For service-account authentication, point `GOOGLE_APPLICATION_CREDENTIALS` at
+the downloaded JSON key file stored outside the repo.

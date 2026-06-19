@@ -46,6 +46,10 @@ class CriterionEvaluation(BaseModel):
         default_factory=list,
         description="EvidenceReference ids supporting this rule evaluation.",
     )
+    not_met_evidence_ids: list[str] = Field(
+        default_factory=list,
+        description="EvidenceReference ids showing why this rule was not met.",
+    )
     missing_evidence: list[str] = Field(
         default_factory=list,
         description="Evidence still needed for this rule, if any.",
@@ -79,7 +83,12 @@ class CriterionEvaluation(BaseModel):
             return CriterionStatus.UNKNOWN
         return CriterionStatus.UNKNOWN
 
-    @field_validator("supporting_evidence_ids", "missing_evidence", mode="before")
+    @field_validator(
+        "supporting_evidence_ids",
+        "not_met_evidence_ids",
+        "missing_evidence",
+        mode="before",
+    )
     @classmethod
     def _coerce_str_list(cls, v):
         if v is None:

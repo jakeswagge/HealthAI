@@ -6,6 +6,7 @@ import streamlit as st
 
 from app.models.case_document import DocumentCategory
 from app.models.ocr_result import DEFAULT_OCR_CONFIDENCE_THRESHOLD
+from app.ui import session
 from app.ui.tabs.common import get_case_service, select_or_create_case
 
 
@@ -53,10 +54,14 @@ def render_document_ingestion_tab() -> None:
         "Upload documents (TXT, PDF, PNG, JPG, JPEG)",
         type=_INGEST_TYPES if readiness.is_available else _TEXT_OR_PDF_TYPES,
         accept_multiple_files=True,
-        key="ingest_uploader",
+        key=session.widget_key("ingest_uploader"),
     )
     type_options = ["(auto-detect)"] + [c.value for c in DocumentCategory]
-    override = st.selectbox("Document type", type_options, key="ingest_doc_type")
+    override = st.selectbox(
+        "Document type",
+        type_options,
+        key=session.widget_key("ingest_doc_type"),
+    )
 
     if uploads and st.button("Ingest document(s)", type="primary", key="ingest_run"):
         for up in uploads:

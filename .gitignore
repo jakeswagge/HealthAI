@@ -22,3 +22,15 @@ data/healthai.db
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Graphify cache
+graphify-out/cache/
+
+# Large validation reports
+validation/classifymymeds_report.json
+
+# Temporary / external tool directories
+CASES/
+CL4R1T4S/
+external/
+New Text Document.txt

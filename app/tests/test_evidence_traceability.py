@@ -17,6 +17,12 @@ from app.evidence.linker import link_appeal, link_review
 from app.evidence.repository import EvidenceRepository
 from app.models.case_document import CaseDocument, DocumentCategory
 from app.models.case_record import HumanDecision
+from app.models.review_result import (
+    CriterionEvaluation,
+    CriterionStatus,
+    Recommendation,
+    ReviewResult,
+)
 from app.review.review_agent import GuidelineReviewAgent
 from app.services.local_client import LocalHeuristicClient
 from app.storage.database import connect, initialize_schema
@@ -147,6 +153,119 @@ class TestTraceableReviewAndAppeal:
         ).appeal
         _, unsupported = link_appeal(appeal, ctx)
         assert unsupported == []
+
+    def test_positive_tb_denial_has_criterion_level_evidence(self):
+        doc = CaseDocument(
+            case_id="C-TB",
+            filename="humira_positive_tb.txt",
+            document_type=DocumentCategory.CLINICAL_NOTE,
+            raw_text=(
+                "Patient: Test Patient\n"
+                "Requested Service: Humira (adalimumab)\n"
+                "Diagnosis: Severe erosive seropositive Rheumatoid Arthritis\n"
+                "Treatment history: Completed 6-month Methotrexate trial and failed. "
+                "Completed 4-month Leflunomide trial and failed.\n"
+                "QuantiFERON-TB Gold result: POSITIVE / REACTIVE.\n"
+                "PRESCRIBER: Dr. Steve Trevor, MD "
+                "(Fellow of the American College of Rheumatology)\n"
+            ),
+        )
+        ctx = CaseAssemblyEngine().assemble("C-TB", [doc])
+        review = GuidelineReviewAgent(llm_client=LocalHeuristicClient()).review(
+            ctx.patient_case,
+            doc.raw_text,
+        ).result
+
+        linked = link_review(review, ctx)
+        evidence_by_id = {ev.evidence_id: ev for ev in ctx.evidence}
+        detail = {item.id: item for item in linked.criteria_detail}
+
+        assert linked.recommendation is Recommendation.DENY
+        assert any("tuberculosis" in c.lower() for c in linked.contraindications_found)
+
+        tb = detail["TB_SCREEN"]
+        assert tb.status is CriterionStatus.NOT_MET
+        assert tb.supporting_evidence_ids
+        tb_refs = [evidence_by_id[eid] for eid in tb.supporting_evidence_ids]
+        assert any(ev.fact_type == "tb_screen_result" for ev in tb_refs)
+        assert any("positive / reactive" in ev.quoted_text.lower() for ev in tb_refs)
+
+        specialist = detail["SPECIALIST"]
+        assert specialist.supporting_evidence_ids
+        specialist_refs = [
+            evidence_by_id[eid] for eid in specialist.supporting_evidence_ids
+        ]
+        assert specialist_refs[0].fact_type == "criterion_specialist"
+        assert "prescriber: dr. steve trevor" in specialist_refs[0].quoted_text.lower()
+        assert (
+            "fellow of the american college of rheumatology"
+            in specialist_refs[0].quoted_text.lower()
+        )
+
+    def test_ai_review_missing_ids_is_repaired_from_evidence_context(self):
+        doc = CaseDocument(
+            case_id="C-AI-TB",
+            filename="humira_positive_tb.txt",
+            document_type=DocumentCategory.CLINICAL_NOTE,
+            raw_text=(
+                "Patient: Test Patient\n"
+                "Requested Service: Humira (adalimumab)\n"
+                "Diagnosis: Severe erosive seropositive Rheumatoid Arthritis\n"
+                "Treatment history: Completed 6-month Methotrexate trial and failed.\n"
+                "QuantiFERON-TB Gold result: POSITIVE / REACTIVE.\n"
+                "PRESCRIBER: Dr. Steve Trevor, MD "
+                "(Fellow of the American College of Rheumatology)\n"
+            ),
+        )
+        ctx = CaseAssemblyEngine().assemble("C-AI-TB", [doc])
+        ai_review = ReviewResult(
+            recommendation=Recommendation.DENY,
+            matched_criteria=[
+                "Documented diagnosis of moderate-to-severe rheumatoid arthritis (or other approved indication).",
+                "Trial and failure of at least one conventional DMARD (e.g., methotrexate) for 3 months (step therapy).",
+                "Prescribed by or in consultation with a rheumatologist or appropriate specialist.",
+            ],
+            missing_criteria=[
+                "Negative tuberculosis (TB) screening prior to initiating therapy.",
+            ],
+            rationale="Positive TB screen is a contraindication.",
+            confidence_score=0.91,
+            contraindications_found=[],
+            criteria_detail=[
+                CriterionEvaluation(
+                    id="DX_CONFIRMED",
+                    description="Documented diagnosis of moderate-to-severe rheumatoid arthritis (or other approved indication).",
+                    met=True,
+                    status=CriterionStatus.MET,
+                ),
+                CriterionEvaluation(
+                    id="STEP_THERAPY",
+                    description="Trial and failure of at least one conventional DMARD (e.g., methotrexate) for 3 months (step therapy).",
+                    met=True,
+                    status=CriterionStatus.MET,
+                ),
+                CriterionEvaluation(
+                    id="TB_SCREEN",
+                    description="Negative tuberculosis (TB) screening prior to initiating therapy.",
+                    met=False,
+                    status=CriterionStatus.NOT_MET,
+                    reasoning="Positive QuantiFERON-TB result.",
+                ),
+                CriterionEvaluation(
+                    id="SPECIALIST",
+                    description="Prescribed by or in consultation with a rheumatologist or appropriate specialist.",
+                    met=True,
+                    status=CriterionStatus.MET,
+                ),
+            ],
+        )
+
+        linked = link_review(ai_review, ctx)
+        detail = {item.id: item for item in linked.criteria_detail}
+
+        assert detail["TB_SCREEN"].supporting_evidence_ids
+        assert detail["SPECIALIST"].supporting_evidence_ids
+        assert linked.evidence_refs["missing_criteria"]
 
 
 # --------------------------------------------------------------------------- #

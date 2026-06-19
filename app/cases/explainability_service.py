@@ -30,6 +30,7 @@ from app.cases.document_repository import CaseDocumentRepository
 from app.cases.governance_service import GovernanceService
 from app.cases.lifecycle import CaseLifecycle
 from app.evidence.repository import EvidenceRepository
+from app.evidence.linker import link_review
 from app.explainability.engine import ExplainabilityEngine
 from app.quality.decision_repository import EvidenceReviewDecisionRepository
 from app.quality.repository import EvidenceQualityRepository
@@ -124,6 +125,20 @@ class ExplainabilityService:
         )
         return context.patient_case
 
+    def _permitted_context(
+        self,
+        case_id: str,
+        approved_set: ApprovedEvidenceSet,
+        all_evidence: list,
+    ):
+        included = {e for e in approved_set.included_ids}
+        permitted = [e for e in all_evidence if e.evidence_id in included]
+        return self.assembly.synthesize_from_evidence(
+            case_id,
+            permitted,
+            self.documents.for_case(case_id),
+        )
+
     # ------------------------------------------------------------------ #
     # Governance-enforced review
     # ------------------------------------------------------------------ #
@@ -137,11 +152,12 @@ class ExplainabilityService:
         self.lifecycle.require(case_id)
         all_evidence = self.evidence.for_case(case_id)
         approved_set = self.governance.build_approved_evidence_set(case_id, settings)
-        patient_case = self._permitted_case(case_id, approved_set, all_evidence)
+        permitted_context = self._permitted_context(case_id, approved_set, all_evidence)
+        patient_case = permitted_context.patient_case
 
         agent = review_agent or GuidelineReviewAgent()
         agent_result = agent.review(patient_case)
-        review = agent_result.result
+        review = link_review(agent_result.result, permitted_context)
 
         explanation = self.explainability.explain_review(
             case_id,

@@ -311,6 +311,14 @@ def build_export_files(
         files["evidence_inventory.json"] = json.dumps(
             [e.model_dump(mode="json") for e in evidence], indent=2
         )
+        if record.patient_case and record.patient_case.clinical_facts:
+            files["clinical_facts.json"] = json.dumps(
+                [
+                    f.model_dump(mode="json")
+                    for f in record.patient_case.clinical_facts
+                ],
+                indent=2,
+            )
         files["conflict_report.json"] = (
             conflict_report.model_dump_json(indent=2)
             if conflict_report is not None

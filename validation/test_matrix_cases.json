@@ -1,0 +1,187 @@
+[
+  {
+    "case_id": "HUMIRA-001",
+    "scenario": "Standard Golden Path Approval",
+    "documents": [
+      {
+        "filename": "rheumatology_clinic_note.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "METRO RHEUMATOLOGY CLINIC\nPatient: Bruce Wayne | DOB: 02/19/1985\nClinical Note: 41-year-old male with a 2-year history of severe, seropositive Rheumatoid Arthritis. Patient experiences morning stiffness lasting >2 hours and active synovitis in bilateral wrists.\nCurrent/Past Medications: Patient previously completed a rigorous 6-month trial of oral Methotrexate (escalated to 25mg weekly) which was discontinued due to lack of efficacy. He subsequently tried Sulfasalazine 1000mg BID for 4 months with no significant reduction in disease activity (current DAS28: 5.4).\nScreening: Baseline QuantiFERON-TB Gold test was performed on 05/12/2026. Result: Negative.\nPlan: Initiate Humira (adalimumab) 40mg SC every 2 weeks.\nPrescriber: Dr. Leslie Thompkins, MD (Board Certified Rheumatologist)"
+      }
+    ],
+    "expected": {
+      "recommendation": "APPROVE",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "FAILED",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-002",
+    "scenario": "Active Systemic Fungal Infection Contraindication",
+    "documents": [
+      {
+        "filename": "gastro_visit.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "GOTHAM GASTROENTEROLOGY GROUP\nPatient: Harvey Dent\nAssessment: Patient is a 43-year-old male presenting with severe, active Crohn's Disease with fistulizing disease progression. History of failing conventional therapy including a 4-month trial of Azathioprine.\nInfection Screening: Lab workup from yesterday confirms an active, unresolved systemic Fungal Infection (Histoplasmosis). Additionally, a chest X-ray showed active pulmonary lesions.\nPlan: The Crohn's symptoms are unmanageable. Despite the active fungal infection risk, we must initiate Humira 40mg SC immediately alongside antifungal coverage.\nPrescriber: Dr. Jonathan Crane, MD (Gastroenterologist)"
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "tb_state": "UNKNOWN",
+      "step_therapy_state": "FAILED",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-003",
+    "scenario": "Multi-Document Latent TB Polarity Conflict",
+    "documents": [
+      {
+        "filename": "hospital_discharge.txt",
+        "document_type": "DISCHARGE_SUMMARY",
+        "text": "Patient: Selina Kyle\nNotes: Patient admitted for elective orthopedic evaluation. Baseline lab testing included a QuantiFERON-TB Gold test which returned POSITIVE / REACTIVE for Mycobacterium tuberculosis exposure. Referred to infectious disease."
+      },
+      {
+        "filename": "outpatient_rheum.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Selina Kyle\nNotes: Patient presenting for evaluation of severe Ankylosing Spondylitis. Prior trials of NSAIDs (Naproxen) failed to manage severe spinal stiffness. TB screening from local clinic noted as completely clear and negative. Moving forward with ordering Humira 40mg SC q2w.\nPrescriber: Dr. Roman Sionis, MD (Rheumatologist)"
+      }
+    ],
+    "expected": {
+      "recommendation": "HUMAN_REVIEW",
+      "tb_state": "CONFLICT",
+      "step_therapy_state": "FAILED",
+      "provider_state": "SPECIALIST",
+      "human_review": true
+    }
+  },
+  {
+    "case_id": "HUMIRA-004",
+    "scenario": "Step-Therapy Refusal Due to Subjective Fears",
+    "documents": [
+      {
+        "filename": "dermatology_center.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "ADVANCED DERMATOLOGY & ARTHRITIS CENTER\nPatient: Barry Allen\nVisit Summary: Patient presents with moderate-to-severe Psoriatic Arthritis affecting the peripheral joints and skin. I discussed initiating standard first-line therapy with oral Methotrexate 15mg weekly.\nDiscussion: The patient spent significant time reading about Methotrexate on internet forums and explicitly refused to fill or ingest the prescription due to fear of potential hepatic side effects. He demands a clean biologic option instead. Because the patient refuses to undergo conventional step-therapy, I am bypassing oral DMARDs and requesting an upfront prior authorization for Humira 40mg SC every 2 weeks.\nClearance: PPD test read as NEGATIVE.\nPrescriber: Dr. Iris West, MD (Board Certified Rheumatologist)"
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "REFUSED",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-005",
+    "scenario": "Provider Role Mismatch (PCP Non-Specialist)",
+    "documents": [
+      {
+        "filename": "family_practice.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "FAMILY FIRST CARE & WALK-IN CLINIC\nPatient: Clark Kent\nClinical Evaluation: 35-year-old male with long-standing severe Plaque Psoriasis covering roughly 12% of his body surface area. He has tried high-potency topical corticosteroids (Clobetasol) for 6 months and oral Methotrexate for 4 months, both without any durable success.\nLabs: QuantiFERON TB test is Negative.\nPlan: Since the patient cannot get an appointment with a local dermatologist for another 9 months, I am taking over management and initiating Humira 40mg SC starter pack immediately.\nPrescriber: Dr. Jonathan Kent, MD (General Practice / Primary Care Provider)"
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "FAILED",
+      "provider_state": "NON_SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-006",
+    "scenario": "Step-Therapy Duration Infraction (Too Short)",
+    "documents": [
+      {
+        "filename": "central_rheum.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "CENTRAL RHEUMATOLOGY ASSOCIATES\nPatient: Diana Prince\nCase Review: Patient exhibits severe, erosive, seropositive Rheumatoid Arthritis.\nTherapy History: We initiated standard first-line therapy with oral Methotrexate 15mg weekly on April 1, 2026. However, after exactly two weeks of treatment, the patient discontinued the medication due to mild, transient nausea and subjective lack of immediate joint improvement. No other DMARDs have been attempted.\nLabs: Quantiferon TB Gold test processed on 04/15/2026: Negative.\nPlan: Bypassing further DMARD trials due to patient intolerance. Initiate Humira 40mg SC q2w.\nPrescriber: Dr. Steve Trevor, MD (Fellow of the American College of Rheumatology)"
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "INSUFFICIENT_DURATION",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-007",
+    "scenario": "Concomitant Dual-Biologic Safety Gate Violation",
+    "documents": [
+      {
+        "filename": "pacific_gastro.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "PACIFIC GASTROENTEROLOGY & DERMATOLOGY\nPatient: Arthur Curry\nNotes: Patient has a dual diagnosis of severe Ulcerative Colitis and severe Plaque Psoriasis.\nCurrent Regimen: He is currently receiving Stelara (ustekinumab) infusions every 8 weeks managed by his gastroenterologist, which has successfully put his Ulcerative Colitis into clinical remission. However, his skin psoriasis is flaring severely.\nPlan: To address the skin flare-ups, I will add Humira 40mg SC every 2 weeks to his concurrent Stelara regimen.\nScreening: Patient is TB negative.\nPrescriber: Dr. Vulko Nuidis, MD (Dermatology & Gastroenterology)"
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "NOT_APPLICABLE",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-008",
+    "scenario": "Diagnosis Ambiguity (Rule-Out / Differential)",
+    "documents": [
+      {
+        "filename": "midwest_neurology.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "MIDWEST NEUROLOGY & ARTHRITIS CLINIC\nPatient: Victor Stone\nPresentation: 22-year-old male presenting with severe migratory polyarthritis and joint swelling.\nAssessment: The presentation is highly atypical. Differentials include Rheumatoid Arthritis vs. Early-stage Systemic Lupus Erythematosus. At this time, a definitive diagnosis of Rheumatoid Arthritis cannot be confirmed, but it remains a strong possibility.\nPrior Meds: Patient tried Naproxen 500mg BID for 3 months without relief. TB test is clear (Negative).\nPlan: While we await definitive diagnostic markers, I will initiate a trial of Humira 40mg SC every 2 weeks.\nPrescriber: Dr. Silas Stone, MD (Rheumatologist)"
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "NOT_MET",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-009",
+    "scenario": "Missing Objective Severity Metrics",
+    "documents": [
+      {
+        "filename": "valley_derm.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "VALLEY DERMATOLOGY PARTNERS\nPatient: Dick Grayson\nNotes: Patient presents with Plaque Psoriasis involving patches on his elbows and scalp. He notes that the patches are itchy and cosmetically frustrating. He has tried topical hydrocortisone creams in the past with mild relief. Labs: TB test is negative.\nPlan: Requesting prior authorization for Humira 40mg SC.\n*Note for Reviewer:* The medical records contain no documentation of the Patient's Body Surface Area (BSA) percentage, and no PASI score was calculated during the visit.\nPrescriber: Dr. Barbara Gordon, MD (Dermatologist)"
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "NOT_MET",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-010",
+    "scenario": "Step-Therapy Medical Exception (True Contraindication)",
+    "documents": [
+      {
+        "filename": "star_city_rheum.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "STAR CITY RHEUMATOLOGY GROUP\nPatient: Oliver Queen\nClinical Summary: 45-year-old male presenting with severe, seropositive Rheumatoid Arthritis with structural joint erosions.\nStep Therapy Evaluation: First-line conventional therapy with oral Methotrexate was thoroughly considered. However, the patient has biopsy-proven Stage 4 Hepatic Cirrhosis with severely elevated baseline LFTs (AST/ALT >3x upper limit of normal). Methotrexate is strictly and absolutely contraindicated in this patient due to hepatotoxicity risks. No other conventional DMARDs were attempted because immediate biologic intervention is required.\nScreening: QuantiFERON-TB test: Negative.\nPlan: Initiate Humira 40mg SC q2w immediately.\nPrescriber: Dr. John Diggle, MD (Board Certified Rheumatologist)"
+      }
+    ],
+    "expected": {
+      "recommendation": "HUMAN_REVIEW",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "CONTRAINDICATED",
+      "provider_state": "SPECIALIST",
+      "human_review": true
+    }
+  }
+]

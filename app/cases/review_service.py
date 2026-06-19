@@ -14,6 +14,8 @@ from __future__ import annotations
 from app.audit.repository import AuditRepository
 from app.cases.lifecycle import CaseLifecycle
 from app.governance.safety import SafetyGate
+from app.assembly.engine import CaseAssemblyEngine
+from app.evidence.linker import link_review
 from app.models.audit_event import AuditActor, AuditEventType
 from app.models.case_record import (
     CaseRecord,
@@ -71,6 +73,7 @@ class ReviewService:
     def attach_review(self, case_id: str, review: ReviewResult) -> CaseRecord:
         """Attach review output and move to REVIEWED."""
         record = self.lifecycle.require(case_id)
+        review = self._link_review_if_possible(case_id, review)
         self._validate_review_traceability(case_id, review)
         existing_gate = dict(review.safety_gate or {})
         gate = SafetyGate(self._settings()).review(review)
@@ -82,9 +85,19 @@ class ReviewService:
             "unsupported_claims",
             "governance_violations",
             "unresolved_conflicts",
+            "requires_human_review_reason",
         ):
             if key in existing_gate:
                 gate_payload[key] = existing_gate[key]
+        if existing_gate.get("status") == "HUMAN_REVIEW_REQUIRED":
+            reasons = list(gate_payload.get("reasons") or [])
+            reason = existing_gate.get("requires_human_review_reason")
+            if reason and reason not in reasons:
+                reasons.append(str(reason))
+            elif not reason and "Review artifact already required human review." not in reasons:
+                reasons.append("Review artifact already required human review.")
+            gate_payload["status"] = "HUMAN_REVIEW_REQUIRED"
+            gate_payload["reasons"] = reasons
         review.safety_gate = gate_payload
         record.review_result = review
         if record.status is not CaseStatus.PENDING_HUMAN_REVIEW:
@@ -108,6 +121,19 @@ class ReviewService:
                 self.lifecycle.set_status(record, CaseStatus.PENDING_HUMAN_REVIEW)
         return self.lifecycle.save(record)
 
+    def _link_review_if_possible(
+        self,
+        case_id: str,
+        review: ReviewResult,
+    ) -> ReviewResult:
+        if self.evidence_repository is None:
+            return review
+        evidence = self.evidence_repository.for_case(case_id)
+        if not evidence:
+            return review
+        context = CaseAssemblyEngine().synthesize_from_evidence(case_id, evidence)
+        return link_review(review, context)
+
     def _validate_review_traceability(
         self,
         case_id: str,
@@ -121,9 +147,6 @@ class ReviewService:
             ev.evidence_id: ev for ev in self.evidence_repository.for_case(case_id)
         }
         cited_ids = cited_evidence_ids(review)
-        if not cited_ids:
-            return
-
         invalid_ids = sorted(cited_ids - set(evidence))
         missing_quotes = sorted(
             ev_id
@@ -136,6 +159,19 @@ class ReviewService:
         rejected_used = sorted(cited_ids & rejected_ids)
 
         errors: list[str] = []
+        if review.criteria_detail and not cited_ids:
+            errors.append("Review has criterion detail but cites no evidence ids.")
+        untraceable = [
+            detail.id
+            for detail in review.criteria_detail
+            if _criterion_requires_traceability(detail)
+        ]
+        if untraceable:
+            errors.append(
+                "Review criterion/criteria lack evidence traceability: "
+                + ", ".join(untraceable)
+                + "."
+            )
         if invalid_ids:
             errors.append(
                 "Review cites evidence ids that do not exist: "
@@ -243,3 +279,11 @@ def _append_unique(existing, additions: list[str]) -> list[str]:
         if text and text not in values:
             values.append(text)
     return values
+
+
+def _criterion_requires_traceability(detail) -> bool:
+    if detail.supporting_evidence_ids or detail.not_met_evidence_ids:
+        return False
+    if detail.missing_evidence:
+        return False
+    return True

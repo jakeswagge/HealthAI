@@ -17,6 +17,15 @@ from __future__ import annotations
 
 from app.evidence.extractor import EvidenceExtractor
 from app.models.case_document import CaseDocument, DocumentCategory
+from app.models.clinical_fact import (
+    ClinicalFact,
+    ConflictStatus,
+    DiagnosisState,
+    StepTherapyState,
+    TBScreenState,
+    clinical_facts_from_evidence,
+    fact_ids_for_evidence,
+)
 from app.models.conflict_report import (
     ConflictReport,
     ConflictSeverity,
@@ -178,6 +187,8 @@ class CaseAssemblyEngine:
         for ev in evidence:
             by_fact.setdefault(ev.fact_type or "unknown", []).append(ev)
 
+        clinical_facts = clinical_facts_from_evidence(evidence)
+
         # 3. Resolve scalar facts + detect conflicts.
         resolved: dict[str, ResolvedFact] = {}
         conflicts: list[FactConflict] = []
@@ -198,20 +209,31 @@ class CaseAssemblyEngine:
                 alternatives=[v for v in distinct if v != _norm_value(fact, chosen.normalized_fact.split(": ", 1)[-1])],
             )
             if len(distinct) > 1:
+                evidence_ids = [r.evidence_id for r in refs]
+                fact_ids = fact_ids_for_evidence(clinical_facts, evidence_ids)
                 conflicts.append(
                     FactConflict(
                         conflict_id=f"CFL-{case_id}-{fact}",
                         fact_type=fact,
                         severity=_CONFLICT_SEVERITY.get(fact, ConflictSeverity.LOW),
                         values=self._display_values(fact, refs),
-                        evidence_ids=[r.evidence_id for r in refs],
+                        evidence_ids=evidence_ids,
+                        clinical_fact_ids=fact_ids,
                         description=(
                             f"Conflicting values for '{fact}' across documents: "
                             + "; ".join(self._display_values(fact, refs))
                             + ". Human review is required before downstream reliance."
                         ),
+                        requires_human_review_reason=(
+                            f"Unresolved {fact} conflict requires human review."
+                        ),
                     )
                 )
+
+        conflicts.extend(
+            self._semantic_conflicts(case_id, by_fact, clinical_facts)
+        )
+        self._mark_conflicted_facts(clinical_facts, conflicts)
 
         # 4. Missing information.
         missing = [
@@ -223,13 +245,16 @@ class CaseAssemblyEngine:
         conflict_report = ConflictReport(case_id=case_id, conflicts=conflicts)
 
         # 5. Synthesize a backward-compatible PatientCase with sources.
-        patient_case = self._synthesize_case(case_id, resolved, by_fact)
+        patient_case = self._synthesize_case(
+            case_id, resolved, by_fact, clinical_facts
+        )
         self._apply_conflict_confidence(patient_case, conflicts)
 
         return UnifiedCaseContext(
             case_id=case_id,
             document_ids=document_ids,
             evidence=evidence,
+            clinical_facts=clinical_facts,
             resolved_facts=resolved,
             conflict_report=conflict_report,
             missing_information=missing,
@@ -249,6 +274,8 @@ class CaseAssemblyEngine:
         rejected/excluded raw document text cannot re-enter downstream review.
         """
         if any(ev.fact_type == "requested_service" for ev in evidence):
+            return evidence
+        if not allow_document_text_healing:
             return evidence
 
         candidates: list[tuple[str, str, CaseDocument | None]] = []
@@ -349,6 +376,168 @@ class CaseAssemblyEngine:
 
         return max(refs, key=score)
 
+    def _semantic_conflicts(
+        self,
+        case_id: str,
+        by_fact: dict[str, list[EvidenceReference]],
+        clinical_facts: list[ClinicalFact],
+    ) -> list[FactConflict]:
+        """Detect typed clinical-state conflicts beyond same-field strings."""
+        conflicts: list[FactConflict] = []
+
+        active_dx = [
+            f for f in clinical_facts
+            if f.domain.value == "DIAGNOSIS"
+            and f.state == DiagnosisState.ACTIVE.value
+        ]
+        nonactive_dx = [
+            f for f in clinical_facts
+            if f.domain.value == "DIAGNOSIS"
+            and f.state in {
+                DiagnosisState.NEGATED.value,
+                DiagnosisState.RULE_OUT.value,
+                DiagnosisState.POSSIBLE.value,
+            }
+        ]
+        for active in active_dx:
+            contradicted = [
+                f for f in nonactive_dx
+                if _norm_value("diagnosis", f.value)
+                == _norm_value("diagnosis", active.value)
+            ]
+            if contradicted:
+                facts = [active, *contradicted]
+                conflicts.append(
+                    self._clinical_conflict(
+                        case_id,
+                        "diagnosis",
+                        "diagnosis-assertion",
+                        ConflictSeverity.HIGH,
+                        facts,
+                        "Active diagnosis evidence conflicts with negated/rule-out diagnosis evidence.",
+                    )
+                )
+
+        provider_states = {
+            f.state
+            for f in clinical_facts
+            if f.domain.value == "PROVIDER"
+        }
+        if {
+            "SPECIALIST",
+            "NON_SPECIALIST",
+        } <= provider_states or {
+            "CONSULTING_SPECIALIST",
+            "NON_SPECIALIST",
+        } <= provider_states:
+            facts = [
+                f for f in clinical_facts
+                if f.domain.value == "PROVIDER"
+                and f.state in {"SPECIALIST", "CONSULTING_SPECIALIST", "NON_SPECIALIST"}
+            ]
+            conflicts.append(
+                self._clinical_conflict(
+                    case_id,
+                    "provider_role",
+                    "specialist-vs-non-specialist",
+                    ConflictSeverity.MEDIUM,
+                    facts,
+                    "Specialist and non-specialist provider evidence conflict.",
+                )
+            )
+
+        requested = [
+            ref for ref in by_fact.get("requested_service", [])
+            if "humira" in self._value_of(ref).lower()
+            or "adalimumab" in self._value_of(ref).lower()
+        ]
+        refused_step = [
+            f for f in clinical_facts
+            if f.domain.value == "STEP_THERAPY"
+            and f.state in {
+                StepTherapyState.REFUSED.value,
+                StepTherapyState.NEVER_STARTED.value,
+            }
+        ]
+        direct_biologic_refusal = [
+            f for f in refused_step
+            if "direct biologic" in f.quoted_text.lower()
+            or "biologic therapy" in f.quoted_text.lower()
+        ]
+        if requested and direct_biologic_refusal:
+            facts = direct_biologic_refusal
+            evidence_ids = [r.evidence_id for r in requested]
+            for fact in facts:
+                evidence_ids.extend(fact.evidence_ids)
+            conflicts.append(
+                FactConflict(
+                    conflict_id=f"CFL-{case_id}-treatment-recommendation",
+                    fact_type="treatment_recommendation",
+                    severity=ConflictSeverity.MEDIUM,
+                    values=[
+                        *self._display_values("requested_service", requested),
+                        *[f"{f.state}: {f.value}" for f in facts],
+                    ],
+                    evidence_ids=list(dict.fromkeys(evidence_ids)),
+                    clinical_fact_ids=[f.fact_id for f in facts],
+                    description=(
+                        "Requested biologic therapy conflicts with explicit "
+                        "refusal or non-initiation of conventional DMARD therapy."
+                    ),
+                    requires_human_review_reason=(
+                        "Treatment recommendation conflict requires human review."
+                    ),
+                )
+            )
+
+        # Existing same-fact conflict detection already catches TB and step
+        # state clashes when they share the same legacy fact type. This helper
+        # only adds semantic cross-fact gaps.
+        return conflicts
+
+    @staticmethod
+    def _clinical_conflict(
+        case_id: str,
+        fact_type: str,
+        suffix: str,
+        severity: ConflictSeverity,
+        facts: list[ClinicalFact],
+        description: str,
+    ) -> FactConflict:
+        evidence_ids: list[str] = []
+        values: list[str] = []
+        for fact in facts:
+            for ev_id in fact.evidence_ids:
+                if ev_id not in evidence_ids:
+                    evidence_ids.append(ev_id)
+            text = f"{fact.state}: {fact.value}"
+            if text not in values:
+                values.append(text)
+        return FactConflict(
+            conflict_id=f"CFL-{case_id}-{fact_type}-{suffix}",
+            fact_type=fact_type,
+            severity=severity,
+            values=values,
+            evidence_ids=evidence_ids,
+            clinical_fact_ids=[f.fact_id for f in facts],
+            description=description,
+            requires_human_review_reason=description,
+        )
+
+    @staticmethod
+    def _mark_conflicted_facts(
+        clinical_facts: list[ClinicalFact],
+        conflicts: list[FactConflict],
+    ) -> None:
+        conflicted = {
+            fact_id
+            for conflict in conflicts
+            for fact_id in conflict.clinical_fact_ids
+        }
+        for fact in clinical_facts:
+            if fact.fact_id in conflicted:
+                fact.conflict_status = ConflictStatus.CONFLICTED
+
     @staticmethod
     def _apply_conflict_confidence(
         case: PatientCase,
@@ -367,6 +556,7 @@ class CaseAssemblyEngine:
         case_id: str,
         resolved: dict[str, ResolvedFact],
         by_fact: dict[str, list[EvidenceReference]],
+        clinical_facts: list[ClinicalFact],
     ) -> PatientCase:
         """Build a PatientCase from resolved facts, attaching field sources."""
 
@@ -418,6 +608,7 @@ class CaseAssemblyEngine:
             field_sources=field_sources,
             raw_fields=raw_fields,
             normalized_fields=normalized_fields,
+            clinical_facts=clinical_facts,
         )
         # Completeness-based confidence so downstream UIs show something useful.
         if case.confidence_score <= 0.0:

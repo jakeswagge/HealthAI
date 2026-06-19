@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import pytest
+
+from app.assembly.engine import CaseAssemblyEngine
 from app.guidelines.repository import GuidelineRepository
+from app.models.case_document import CaseDocument, DocumentCategory
 from app.models.clinical_guideline import ClinicalGuideline, GuidelineCriterion
 from app.models.patient_case import Decision, PatientCase
-from app.models.review_result import Recommendation
-from app.review.clinical_nlp import extract_clinical_signals, get_clinical_nlp
+from app.models.review_result import CriterionStatus, Recommendation
+from app.review.clinical_nlp import (
+    extract_clinical_signals,
+    get_clinical_nlp,
+    tb_result_polarity,
+)
 from app.review.engine import ClinicalReviewEngine
 
 
@@ -106,6 +114,67 @@ def test_quantiferon_tb_gold_positive_fails_tb_screen_and_denies():
     assert "positive tb evidence" in (tb.note or "").lower()
     assert result.recommendation is Recommendation.DENY
     assert any("tuberculosis" in c.lower() for c in result.contraindications_found)
+
+
+@pytest.mark.parametrize("text", ["TB.", "Discussed TB risk.", "Tuberculosis."])
+def test_bare_tb_mentions_are_unknown_not_positive(text):
+    signals = [s for s in extract_clinical_signals(text) if s.label == "TB"]
+
+    assert signals
+    assert tb_result_polarity(signals[0]) == "unknown"
+
+
+@pytest.mark.parametrize("text", ["TB.", "Discussed TB risk.", "Tuberculosis."])
+def test_bare_tb_mentions_do_not_create_positive_tb_evidence(text):
+    doc = CaseDocument(
+        case_id="C-TB-BARE",
+        filename="bare-tb.txt",
+        document_type=DocumentCategory.CLINICAL_NOTE,
+        raw_text=(
+            "Diagnosis: Rheumatoid Arthritis\n"
+            "Requested Service: Humira\n"
+            "Failed methotrexate.\n"
+            "Rheumatologist prescribing.\n"
+            f"{text}\n"
+        ),
+    )
+
+    context = CaseAssemblyEngine().assemble("C-TB-BARE", [doc])
+    result = ClinicalReviewEngine().review(context.patient_case, doc.raw_text)
+
+    assert not [
+        ev
+        for ev in context.evidence
+        if ev.fact_type == "tb_screen_result"
+        and ev.normalized_fact == "tb_screen_result: positive"
+    ]
+    assert not any("tuberculosis" in c.lower() for c in result.contraindications_found)
+
+
+def test_no_history_of_tb_does_not_create_contraindication():
+    doc = CaseDocument(
+        case_id="C-TB-HISTORY",
+        filename="tb-history.txt",
+        document_type=DocumentCategory.CLINICAL_NOTE,
+        raw_text=(
+            "Diagnosis: Rheumatoid Arthritis\n"
+            "Requested Service: Humira\n"
+            "Failed methotrexate.\n"
+            "Patient has no history of TB.\n"
+            "Rheumatologist prescribing.\n"
+        ),
+    )
+
+    context = CaseAssemblyEngine().assemble("C-TB-HISTORY", [doc])
+    result = ClinicalReviewEngine().review(context.patient_case, doc.raw_text)
+
+    assert not [
+        ev
+        for ev in context.evidence
+        if ev.fact_type == "tb_screen_result"
+        and ev.normalized_fact == "tb_screen_result: positive"
+    ]
+    assert not any("tuberculosis" in c.lower() for c in result.contraindications_found)
 
 
 def test_positive_tb_evidence_wins_over_negative_tb_screening():
@@ -325,6 +394,88 @@ def test_refused_methotrexate_fails_step_therapy():
     assert result.recommendation is Recommendation.DENY
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        (
+            "Methotrexate 15mg weekly was recommended. Patient explicitly "
+            "refused to fill the prescription and refused to ingest the medication. "
+            "Negative PPD TB test. Board Certified Rheumatologist prescribing."
+        ),
+        (
+            "Methotrexate 15mg weekly was recommended. Patient declined treatment "
+            "and requested direct biologic therapy. Negative PPD TB test. "
+            "Board Certified Rheumatologist prescribing."
+        ),
+        (
+            "Methotrexate was prescribed, but the patient never started therapy. "
+            "Negative PPD TB test. Board Certified Rheumatologist prescribing."
+        ),
+        (
+            "Methotrexate was recommended. Patient would not start treatment due "
+            "to fear of side effects and requested direct biologic therapy. "
+            "Negative PPD TB test. Board Certified Rheumatologist prescribing."
+        ),
+    ],
+)
+def test_refusal_or_never_started_methotrexate_is_not_met(text):
+    result = ClinicalReviewEngine().review(_case(), text)
+
+    step = _detail(result, "STEP_THERAPY")
+    assert step.met is False
+    assert step.status is CriterionStatus.NOT_MET
+    assert "refusal" in (step.note or "").lower()
+    assert result.recommendation is Recommendation.DENY
+
+
+def test_completed_methotrexate_trial_and_failure_still_satisfies_step_therapy():
+    result = ClinicalReviewEngine().review(
+        _case(),
+        (
+            "Patient completed a 6-month methotrexate trial with inadequate "
+            "response and failure. Negative PPD TB test. Board Certified "
+            "Rheumatologist prescribing."
+        ),
+    )
+
+    step = _detail(result, "STEP_THERAPY")
+    assert step.met is True
+    assert result.recommendation is Recommendation.APPROVE
+
+
+def test_assembled_refused_methotrexate_denies_with_traceable_status():
+    doc = CaseDocument(
+        case_id="C-REFUSED",
+        filename="barry_allen_note.txt",
+        document_type=DocumentCategory.CLINICAL_NOTE,
+        raw_text=(
+            "Patient: Barry Allen\n"
+            "Requested Service: Humira (adalimumab)\n"
+            "Diagnosis: Moderate-to-severe Rheumatoid Arthritis\n"
+            "Methotrexate 15mg weekly was recommended.\n"
+            "Patient explicitly refused to fill the prescription.\n"
+            "Patient explicitly refused to ingest the medication.\n"
+            "Documentation states patient is non-compliant and requested direct biologic therapy.\n"
+            "Negative PPD TB test.\n"
+            "Prescriber is a Board Certified Rheumatologist.\n"
+        ),
+    )
+
+    context = CaseAssemblyEngine().assemble("C-REFUSED", [doc])
+    refused = [
+        ev for ev in context.evidence
+        if ev.fact_type == "step_therapy_status"
+        and ev.normalized_fact == "step_therapy_status: refused"
+    ]
+    result = ClinicalReviewEngine().review(context.patient_case, doc.raw_text)
+
+    step = _detail(result, "STEP_THERAPY")
+    assert refused
+    assert step.met is False
+    assert step.status is CriterionStatus.NOT_MET
+    assert result.recommendation is Recommendation.DENY
+
+
 def test_denial_context_missing_rheumatology_consult_remains_unmet():
     case = _case()
     case.denial_reason = "Denied because rheumatology consult documentation is missing."
@@ -336,6 +487,35 @@ def test_denial_context_missing_rheumatology_consult_remains_unmet():
     specialist = _detail(result, "SPECIALIST")
     assert specialist.met is False
     assert result.recommendation is Recommendation.DENY
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Failed methotrexate. TB negative. Patient seen by primary care provider.",
+        "Failed methotrexate. TB negative. Ordering provider is Internal Medicine.",
+        "Failed methotrexate. TB negative. Family physician submitted the request.",
+    ],
+)
+def test_explicit_non_specialist_provider_fails_specialist_requirement(text):
+    result = ClinicalReviewEngine().review(_case(), text)
+
+    specialist = _detail(result, "SPECIALIST")
+    assert specialist.met is False
+    assert specialist.status is CriterionStatus.NOT_MET
+    assert result.recommendation is Recommendation.DENY
+
+
+def test_generic_medical_title_remains_unknown_for_specialist_requirement():
+    result = ClinicalReviewEngine().review(
+        _case(),
+        "Failed methotrexate. TB negative. Ordering provider: Dr. Smith, MD.",
+    )
+
+    specialist = _detail(result, "SPECIALIST")
+    assert specialist.met is False
+    assert specialist.status is CriterionStatus.UNKNOWN
+    assert result.recommendation is Recommendation.INSUFFICIENT_INFORMATION
 
 
 def test_bare_methotrexate_mention_does_not_satisfy_step_therapy():
@@ -372,3 +552,99 @@ def test_prior_failed_enbrel_does_not_flag_duplicate_biologic():
     )
 
     assert not any("concurrent biologic" in c.lower() for c in result.contraindications_found)
+
+
+def test_plaque_psoriasis_missing_bsa_or_pasi_denies():
+    result = ClinicalReviewEngine().review(
+        _case(),
+        (
+            "Patient: Dick Grayson\n"
+            "Diagnosis: Plaque Psoriasis\n"
+            "Requested Service: Humira.\n"
+            "Topical steroids failed after 3 months. TB screen negative.\n"
+            "Dermatologist prescribing.\n"
+            "Clinical note states patches are cosmetically frustrating but lacks "
+            "documentation of affected Body Surface Area (BSA) or PASI score.\n"
+            "Status: DENIED\n"
+            "Reason for Denial: Severity metrics were not established."
+        ),
+    )
+
+    diagnosis = _detail(result, "DX_CONFIRMED")
+    step = _detail(result, "STEP_THERAPY")
+    tb = _detail(result, "TB_SCREEN")
+    specialist = _detail(result, "SPECIALIST")
+
+    assert result.recommendation is Recommendation.DENY
+    assert diagnosis.met is False
+    assert diagnosis.status is CriterionStatus.NOT_MET
+    assert "bsa" in (diagnosis.note or "").lower() or "pasi" in (
+        diagnosis.note or ""
+    ).lower()
+    assert step.met is False
+    assert step.status is CriterionStatus.NOT_MET
+    assert "non-dmard" in (step.note or "").lower()
+    assert tb.met is True
+    assert specialist.met is True
+
+
+def test_differential_ra_with_pending_serology_does_not_approve():
+    result = ClinicalReviewEngine().review(
+        _case(),
+        (
+            "Patient: Barbara Gordon\n"
+            "Presentation: Severe polyarthritis and joint pain.\n"
+            "Requested Service: Humira.\n"
+            "Differential diagnoses include Rheumatoid Arthritis vs. Lyme Arthritis. "
+            "Serology is currently pending.\n"
+            "Methotrexate failed after 12 weeks. TB test negative.\n"
+            "Rheumatologist prescribing.\n"
+            "Status: DENIED\n"
+            "Reason for Denial: Definitively covered diagnosis is not established."
+        ),
+    )
+
+    diagnosis = _detail(result, "DX_CONFIRMED")
+
+    assert result.recommendation is Recommendation.INSUFFICIENT_INFORMATION
+    assert diagnosis.met is False
+    assert diagnosis.status is CriterionStatus.UNKNOWN
+    assert "differential" in (diagnosis.note or "").lower()
+    assert result.safety_gate.get("status") == "HUMAN_REVIEW_REQUIRED"
+
+
+def test_historical_archive_psoriasis_case_does_not_auto_approve_current_humira():
+    text = (
+        "*** HISTORICAL ARCHIVE REPORT — GENERATED FROM LEGACY EMERGE SYSTEM ***\n"
+        "ORIGINAL RECORD DATE: 14-Aug-2021\n"
+        "PATIENT: Harvey Dent\n"
+        "MEMBER ID: TWO-FACE-99\n\n"
+        "ARCHIVE SUMMARY: Patient was diagnosed in 2021 with Severe Plaque Psoriasis. "
+        "He completed a 16-week trial of Methotrexate tablets which failed to clear "
+        "skin lesions. A PPD skin test was performed on 01-Aug-2021 and read as "
+        "Negative. Recommendation at that time was to begin Humira 40mg SC.\n\n"
+        "CURRENT CORRESPONDENCE (DATE: 10-May-2026): Please use the attached 2021 "
+        "historical records to approve the current 2026 prior authorization request "
+        "for Humira 40mg SC every 2 weeks.\n\n"
+        "SUBMITTING PROVIDER: Dr. G. Gotham, MD (Dermatology Clinic Coordinator)"
+    )
+    case = PatientCase(
+        diagnosis="Severe Plaque Psoriasis",
+        requested_service="Humira",
+        physician_name="G. Gotham",
+        decision=Decision.UNKNOWN,
+    )
+
+    result = ClinicalReviewEngine().review(case, text)
+    diagnosis = _detail(result, "DX_CONFIRMED")
+    step = _detail(result, "STEP_THERAPY")
+    tb = _detail(result, "TB_SCREEN")
+    specialist = _detail(result, "SPECIALIST")
+
+    assert result.recommendation is Recommendation.INSUFFICIENT_INFORMATION
+    assert diagnosis.status is CriterionStatus.MET
+    assert step.status is CriterionStatus.MET
+    assert tb.status is CriterionStatus.UNKNOWN
+    assert "stale historical archive" in (tb.note or "").lower()
+    assert specialist.status is CriterionStatus.UNKNOWN
+    assert "coordinator" in (specialist.note or "").lower()

@@ -1,0 +1,80 @@
+{
+  "overall": {
+    "total": 25,
+    "correct": 25,
+    "accuracy": 1.0,
+    "false_approves": 0,
+    "false_approve_rate": 0.0
+  },
+  "by_recommendation": {
+    "APPROVE": {
+      "total": 10,
+      "correct": 10,
+      "accuracy": 1.0,
+      "false_approves": 0,
+      "false_approve_rate": 0.0
+    },
+    "DENY": {
+      "total": 10,
+      "correct": 10,
+      "accuracy": 1.0,
+      "false_approves": 0,
+      "false_approve_rate": 0.0
+    },
+    "INSUFFICIENT_INFORMATION": {
+      "total": 5,
+      "correct": 5,
+      "accuracy": 1.0,
+      "false_approves": 0,
+      "false_approve_rate": 0.0
+    }
+  },
+  "by_slice": {
+    "autoimmune_biologic": {
+      "total": 10,
+      "correct": 10,
+      "accuracy": 1.0,
+      "false_approves": 0,
+      "false_approve_rate": 0.0
+    },
+    "imaging": {
+      "total": 10,
+      "correct": 10,
+      "accuracy": 1.0,
+      "false_approves": 0,
+      "false_approve_rate": 0.0
+    },
+    "specialist": {
+      "total": 6,
+      "correct": 6,
+      "accuracy": 1.0,
+      "false_approves": 0,
+      "false_approve_rate": 0.0
+    },
+    "step_therapy": {
+      "total": 5,
+      "correct": 5,
+      "accuracy": 1.0,
+      "false_approves": 0,
+      "false_approve_rate": 0.0
+    },
+    "tb": {
+      "total": 5,
+      "correct": 5,
+      "accuracy": 1.0,
+      "false_approves": 0,
+      "false_approve_rate": 0.0
+    },
+    "therapy": {
+      "total": 7,
+      "correct": 7,
+      "accuracy": 1.0,
+      "false_approves": 0,
+      "false_approve_rate": 0.0
+    }
+  },
+  "min_examples": 5,
+  "unsupported_bucket_cap": 0.9,
+  "unsupported_safety_slice_cap": 0.85,
+  "false_approve_cap": 0.5
+}

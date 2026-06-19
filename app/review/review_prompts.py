@@ -8,6 +8,7 @@ only, never inventing criteria that are not in the supplied guideline.
 
 from __future__ import annotations
 
+from datetime import date
 import json
 
 from app.models.clinical_guideline import ClinicalGuideline
@@ -28,8 +29,9 @@ _REVIEW_SCHEMA_EXAMPLE = {
             "description": "criterion description from the supplied guideline",
             "met": "boolean",
             "status": "one of: met | not_met | unknown",
-            "supporting_evidence_ids": ["EvidenceReference ids, if supplied"],
-            "missing_evidence": ["rule-specific missing evidence, if any"],
+        "supporting_evidence_ids": ["EvidenceReference ids, if supplied"],
+        "not_met_evidence_ids": ["EvidenceReference ids proving the criterion failed, if supplied"],
+        "missing_evidence": ["rule-specific missing evidence, if any"],
             "reasoning": "brief rule-level reasoning grounded in the evidence",
             "confidence_score": "float between 0.0 and 1.0",
             "review_backend": "model/backend name",
@@ -51,17 +53,34 @@ criteria or requirements that are not listed.
 2. A criterion is "matched" only if the case/evidence clearly supports it. If \
 the denial reason states a requirement was not met, treat that criterion as \
 NOT satisfied (missing).
-3. If required criteria cannot be confirmed from the available evidence (not \
-clearly met and not clearly failed), prefer INSUFFICIENT_INFORMATION over \
-guessing.
+3. Evaluate every required criterion independently as met, not_met, or unknown.
+   - met: current patient-specific evidence clearly satisfies the criterion.
+   - not_met: current patient-specific evidence clearly contradicts or fails the
+     criterion.
+   - unknown: evidence is missing, stale, historical-only, ambiguous, or not
+     patient-specific.
 4. recommendation must be exactly one of: APPROVE, DENY, \
 INSUFFICIENT_INFORMATION.
    - APPROVE: all required criteria are satisfied and no contraindication.
    - DENY: at least one required criterion is clearly unmet, or a \
 contraindication is present.
    - INSUFFICIENT_INFORMATION: evidence is incomplete to decide.
-5. Never fabricate clinical facts. Base everything on the provided inputs.
-6. Output VALID JSON ONLY - no markdown, no code fences, no commentary before \
+5. Do not treat historical archive material as current evidence for a new prior
+authorization request. Old diagnoses or old lab results may support history,
+but stale testing or stale provider recommendations are unknown for current
+coverage requirements unless the guideline explicitly allows them.
+6. For TB screening, a bare mention of TB/tuberculosis is unknown. Negative TB
+screening is met only when a patient-specific negative test/result is documented
+and is current for the request context. Positive or active TB/infection is a
+contraindication.
+7. For specialist criteria, generic titles such as MD, DO, physician, NP, or PA
+are unknown unless specialty or consultation context is documented. Coordinator
+or administrative titles are not specialist-prescriber evidence.
+8. Put criteria with status met in matched_criteria. Put criteria with status
+not_met or unknown in missing_criteria. Do not leave a criterion out of both
+lists.
+9. Never fabricate clinical facts. Base everything on the provided inputs.
+10. Output VALID JSON ONLY - no markdown, no code fences, no commentary before \
 or after the JSON object.\
 """
 
@@ -119,12 +138,16 @@ def build_review_user_prompt(
     schema = json.dumps(_REVIEW_SCHEMA_EXAMPLE, indent=2)
     doc_section = ""
     if document_text:
-        # Keep the document bounded; the structured case is the primary input.
-        snippet = document_text.strip()[:4000]
+        # Keep the document bounded, but give the AI enough room to reason about
+        # dates, historical sections, and current correspondence.
+        snippet = document_text.strip()[:12000]
         doc_section = f"\nSOURCE DOCUMENT (supporting evidence, may be partial):\n\"\"\"\n{snippet}\n\"\"\"\n"
 
     return f"""\
 Review the following prior-authorization case against the clinical guideline.
+
+REVIEW RUN DATE:
+{date.today().isoformat()}
 
 CLINICAL GUIDELINE:
 {_guideline_block(guideline)}
@@ -139,9 +162,17 @@ Produce a single JSON object with EXACTLY these keys:
 Reminders:
 - Use only the guideline's listed criteria.
 - Include one criteria_detail object for every required guideline criterion.
+- Each criteria_detail.status must be exactly one of: met, not_met, unknown.
+- Derive the final recommendation from criteria_detail:
+  APPROVE only if every required criterion is met and no contraindication.
+  DENY if a criterion is clearly not_met or a contraindication is present.
+  INSUFFICIENT_INFORMATION if any required criterion is unknown and none are
+  clearly not_met.
 - Use only supplied evidence ids in supporting_evidence_ids. If no id is
   supplied for a criterion, return an empty list rather than inventing one.
 - If the denial reason indicates an unmet requirement, that criterion is missing.
+- Historical archive evidence for an old authorization does not satisfy current
+  lab/specialist/current-evaluation requirements for a new request.
 - Prefer INSUFFICIENT_INFORMATION when evidence is incomplete.
 - Valid JSON only. No code fences or extra text.
 """
@@ -157,7 +188,7 @@ def build_review_selection_prompt(
     guideline_library = ",\n".join(_guideline_block(g) for g in guidelines)
     doc_section = ""
     if document_text:
-        snippet = document_text.strip()[:4000]
+        snippet = document_text.strip()[:12000]
         doc_section = f"\nSOURCE DOCUMENT (supporting evidence, may be partial):\n\"\"\"\n{snippet}\n\"\"\"\n"
 
     return f"""\
@@ -177,6 +208,9 @@ CLINICAL GUIDELINE LIBRARY:
 PATIENT CASE (structured):
 {_case_block(case)}
 {doc_section}
+REVIEW RUN DATE:
+{date.today().isoformat()}
+
 Produce a single JSON object with EXACTLY these keys:
 
 {schema}
@@ -185,10 +219,18 @@ Reminders:
 - Use only criteria from the selected supplied guideline.
 - Include one criteria_detail object for every required criterion in the
   selected guideline.
+- Each criteria_detail.status must be exactly one of: met, not_met, unknown.
+- Derive the final recommendation from criteria_detail:
+  APPROVE only if every required criterion is met and no contraindication.
+  DENY if a criterion is clearly not_met or a contraindication is present.
+  INSUFFICIENT_INFORMATION if any required criterion is unknown and none are
+  clearly not_met.
 - Use only supplied evidence ids in supporting_evidence_ids. If no id is
   supplied for a criterion, return an empty list rather than inventing one.
 - Do not invent guideline ids, services, criteria, or clinical facts.
 - If the denial reason indicates an unmet requirement, that criterion is missing.
+- Historical archive evidence for an old authorization does not satisfy current
+  lab/specialist/current-evaluation requirements for a new request.
 - Prefer INSUFFICIENT_INFORMATION when evidence is incomplete.
 - Valid JSON only. No code fences or extra text.
 """

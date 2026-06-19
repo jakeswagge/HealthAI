@@ -20,7 +20,7 @@ import re
 
 from app.models.appeal_letter import AppealLetter
 from app.models.evidence_reference import EvidenceReference
-from app.models.review_result import ReviewResult
+from app.models.review_result import CriterionEvaluation, ReviewResult
 from app.models.unified_case_context import UnifiedCaseContext
 
 _STOPWORDS = {
@@ -56,6 +56,64 @@ def _best_matches(
     return [eid for _, eid in scored[:limit]]
 
 
+def _criterion_fact_types(detail: CriterionEvaluation) -> tuple[str, ...]:
+    """Return preferred evidence fact types for a criterion row."""
+    marker = f"{detail.id} {detail.description}".lower()
+    if "specialist" in marker or "rheumatologist" in marker:
+        return ("criterion_specialist", "specialist_status", "provider_role")
+    if "tb_screen" in marker or "tuberculosis" in marker:
+        return ("tb_screen_result", "criterion_tb_screen")
+    if "dmard" in marker or "methotrexate" in marker or "step_therapy" in marker:
+        return ("criterion_step_therapy", "step_therapy_status")
+    if "diagnosis" in marker or "rheumatoid arthritis" in marker:
+        return ("diagnosis", "icd10_codes")
+    return ()
+
+
+def _ids_for_fact_types(
+    evidence: list[EvidenceReference],
+    fact_types: tuple[str, ...],
+) -> list[str]:
+    ids: list[str] = []
+    for fact_type in fact_types:
+        for ev in evidence:
+            if ev.fact_type == fact_type and ev.evidence_id not in ids:
+                ids.append(ev.evidence_id)
+    return ids
+
+
+def _ids_for_fact_types_limited(
+    evidence: list[EvidenceReference],
+    fact_types: tuple[str, ...],
+    limit: int = 5,
+) -> list[str]:
+    return _ids_for_fact_types(evidence, fact_types)[:limit]
+
+
+def _detail_evidence_ids(
+    detail: CriterionEvaluation,
+    evidence: list[EvidenceReference],
+) -> list[str]:
+    ids = _ids_for_fact_types(evidence, _criterion_fact_types(detail))
+    if not ids and detail.note:
+        ids = _best_matches(detail.note, evidence, threshold=1)
+    valid = {ev.evidence_id for ev in evidence}
+    existing = [eid for eid in detail.supporting_evidence_ids if eid in valid]
+    return _dedupe(ids + existing)
+
+
+def _assign_detail_evidence_ids(
+    detail: CriterionEvaluation,
+    evidence: list[EvidenceReference],
+) -> None:
+    linked_ids = _detail_evidence_ids(detail, evidence)
+    if not linked_ids:
+        return
+    if detail.status and detail.status.value == "not_met":
+        detail.not_met_evidence_ids = linked_ids
+    detail.supporting_evidence_ids = linked_ids
+
+
 def link_review(review: ReviewResult, context: UnifiedCaseContext) -> ReviewResult:
     """Populate ``review.evidence_refs`` from the assembled context.
 
@@ -65,10 +123,15 @@ def link_review(review: ReviewResult, context: UnifiedCaseContext) -> ReviewResu
     refs: dict[str, list[str]] = {}
     detail_by_description = {d.description: d for d in review.criteria_detail}
 
+    for detail in review.criteria_detail:
+        _assign_detail_evidence_ids(detail, evidence)
+
     matched_ids: list[str] = []
     for crit in review.matched_criteria:
-        matched_ids.extend(_best_matches(crit, evidence))
         detail = detail_by_description.get(crit)
+        if detail:
+            matched_ids.extend(detail.supporting_evidence_ids)
+        matched_ids.extend(_best_matches(crit, evidence))
         if detail and detail.note:
             matched_ids.extend(_best_matches(detail.note, evidence, threshold=1))
     if matched_ids:
@@ -76,7 +139,14 @@ def link_review(review: ReviewResult, context: UnifiedCaseContext) -> ReviewResu
 
     missing_ids: list[str] = []
     for crit in review.missing_criteria:
-        missing_ids.extend(_best_matches(crit, evidence))
+        detail = detail_by_description.get(crit)
+        if detail:
+            missing_ids.extend(detail.supporting_evidence_ids)
+            missing_ids.extend(detail.not_met_evidence_ids)
+            if detail.note:
+                missing_ids.extend(_best_matches(detail.note, evidence, threshold=1))
+        else:
+            missing_ids.extend(_best_matches(crit, evidence, threshold=2))
     if missing_ids:
         refs["missing_criteria"] = _dedupe(missing_ids)
 
@@ -116,9 +186,30 @@ def link_appeal(
     # Map the structured appeal fields to evidence.
     section_evidence["clinical_summary"] = _best_matches(
         appeal.clinical_summary, evidence, limit=5
+    ) or _ids_for_fact_types_limited(
+        evidence,
+        (
+            "diagnosis",
+            "requested_service",
+            "step_therapy_status",
+            "tb_screen_result",
+            "provider_role",
+            "specialist_status",
+            "criterion_specialist",
+        ),
+        limit=5,
     )
     section_evidence["appeal_reason"] = _best_matches(
         appeal.appeal_reason, evidence, limit=5
+    ) or _ids_for_fact_types_limited(
+        evidence,
+        (
+            "denial_reason",
+            "decision",
+            "claim_denial_reason",
+            "prior_auth_status",
+        ),
+        limit=5,
     )
     for i, item in enumerate(appeal.guideline_support):
         ids = _best_matches(item, evidence)

@@ -9,9 +9,12 @@ import pytest
 
 from app.appeals.appeal_agent import AppealAgentError
 from app.cases.service import CaseService
-from app.models.case_document import DocumentCategory
+from app.models.appeal_letter import AppealLetter
+from app.models.case_document import CaseDocument, DocumentCategory
+from app.models.case_record import CaseRecord
 from app.models.patient_case import Decision, PatientCase
-from app.models.review_result import Recommendation, ReviewResult
+from app.models.review_result import CriterionEvaluation, Recommendation, ReviewResult
+import app.services.factory as factory
 from app.services.llm_client import LLMClient, LLMResponse
 from app.services.local_client import LocalHeuristicClient
 from app.ui import dashboard, session
@@ -112,6 +115,19 @@ class ScriptedReviewClient(LLMClient):
 
 @pytest.fixture
 def fake_state(monkeypatch):
+    for env_name in (
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "HEALTHAI_LLM_BACKEND",
+        "HEALTHAI_GEMINI_USE_VERTEXAI",
+        "GOOGLE_GENAI_USE_VERTEXAI",
+        "GOOGLE_CLOUD_PROJECT",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+    ):
+        monkeypatch.delenv(env_name, raising=False)
+    monkeypatch.setattr(factory, "_google_adc_available", lambda: False)
     state = FakeSessionState()
     monkeypatch.setattr(session.st, "session_state", state)
     session.init_state()
@@ -175,6 +191,144 @@ def test_selected_assembled_case_reaches_review_and_appeal_pipeline(
     assert appeal is not None
     assert "Humira" in appeal.letter_text
     assert service.get_case(case_id).appeal_letter == appeal
+
+
+def test_shell_does_not_auto_select_saved_case_without_explicit_choice(
+    fake_state,
+    service,
+):
+    record = service.create_case("Patient Name Ellie Sattler.txt")
+
+    active_case, cases = dashboard._case_for_shell(service)
+
+    assert active_case is None
+    assert [case.case_id for case in cases] == [record.case_id]
+    assert session.get_persisted_case_id() is None
+
+
+def test_cockpit_html_is_not_indented_as_markdown_code():
+    step_html = dashboard._clean_html(
+        """
+        <div class="ha-step done">
+          <div class="ha-dot">OK</div>
+        </div>
+        """
+    )
+    markup = dashboard._clean_html(
+        f"""
+        <div class="ha-stepper">{step_html}</div>
+        """
+    )
+
+    assert markup.startswith('<div class="ha-stepper">')
+    assert '<div class="ha-step done">' in markup
+    assert all(not line.startswith("    ") for line in markup.splitlines())
+
+
+def test_shell_case_callback_clears_current_upload_choice(fake_state):
+    widget_key = "shell_case_select"
+    fake_state[widget_key] = "Current upload / draft"
+    session.set_persisted_case_id("case-6133EF117B7E")
+
+    dashboard._handle_shell_case_change(widget_key, "Current upload / draft")
+
+    assert session.get_persisted_case_id() is None
+
+    fake_state[widget_key] = "case-new"
+    dashboard._handle_shell_case_change(widget_key, "Current upload / draft")
+
+    assert session.get_persisted_case_id() == "case-new"
+
+
+def test_workflow_marks_structured_extraction_ready_for_uploaded_text(fake_state):
+    session.set_text("Patient: Alan Grant\nRequested Service: MRI", page_count=1)
+
+    steps = dashboard._workflow_steps(
+        record=None,
+        case=None,
+        review=None,
+        appeal=None,
+        docs=[],
+        evidence=[],
+    )
+
+    assert dashboard._step_parts(steps[1]) == (
+        "Structured Extraction",
+        "ready",
+        "Local + AI ready",
+        ("Local", "AI"),
+    )
+
+
+def test_sidebar_navigation_places_structured_extraction_first():
+    nav_options = dashboard._nav_options()
+
+    assert nav_options[0] == "Structured Extraction"
+    assert nav_options[1] == "Case Intake & Assembly"
+    assert "Clinical Review" in nav_options
+    assert "Appeal Generator" in nav_options
+    assert "Document Ingestion" not in nav_options
+    assert "OCR Status" not in nav_options
+    assert "Document Assembly" not in nav_options
+    assert "Evidence Explorer" not in nav_options
+
+
+def test_preview_text_preserves_raw_pages_when_ocr_is_partial():
+    doc = CaseDocument(
+        case_id="CASE-1",
+        filename="clinical-note.txt",
+        raw_text="Assessment on page one\fPlan on page two",
+        page_count=2,
+        document_type=DocumentCategory.CLINICAL_NOTE,
+    )
+    ocr_page = SimpleNamespace(
+        page_number=1,
+        processing_method=SimpleNamespace(value="TEXT_LAYER"),
+        confidence=1.0,
+        raw_text="Assessment on page one",
+    )
+
+    text = dashboard._preview_text_for_doc(doc, [ocr_page])
+
+    assert "Page 1 (TEXT_LAYER, 100%)" in text
+    assert "Assessment on page one" in text
+    assert "Page 2\nPlan on page two" in text
+
+
+def test_criteria_met_and_missing_are_split_by_status():
+    review = ReviewResult(
+        recommendation=Recommendation.INSUFFICIENT_INFORMATION,
+        rationale="Full rationale should stay visible in the summary card.",
+        criteria_detail=[
+            CriterionEvaluation(
+                id="MET",
+                description="Conservative therapy completed.",
+                met=True,
+                supporting_evidence_ids=["ev-1", "ev-2"],
+            ),
+            CriterionEvaluation(
+                id="MISSING",
+                description="Red flag symptoms documented.",
+                met=False,
+                missing_evidence=["Submit neurologic exam findings."],
+            ),
+        ],
+    )
+
+    assert dashboard._criteria_by_status(review, "Met") == [
+        {
+            "criterion": "Conservative therapy completed.",
+            "status": "Met",
+            "evidence": 2,
+        }
+    ]
+    assert dashboard._criteria_by_status(review, "Missing") == [
+        {
+            "criterion": "Red flag symptoms documented.",
+            "status": "Missing",
+            "evidence": 0,
+        }
+    ]
 
 
 def test_persisted_ai_review_keeps_reasoning_provenance(fake_state, service):
@@ -438,6 +592,74 @@ def test_appeal_tab_does_not_autogenerate_for_non_denied_database_case(
     dashboard._render_appeal_tab()
 
     assert any("active denied case" in message for message in messages)
+
+
+def test_appeal_workspace_renders_editor_layout(fake_state, service, monkeypatch):
+    case = PatientCase(
+        patient_name="James Torres",
+        member_id="EAS004",
+        diagnosis="Rheumatoid Arthritis",
+        requested_service="Humira",
+        decision=Decision.DENIED,
+        denial_reason="Step therapy requirements not met.",
+        insurance_company="Aetna",
+    )
+    review = ReviewResult(
+        recommendation=Recommendation.INSUFFICIENT_INFORMATION,
+        matched_criteria=["Diagnosis confirmed", "Specialist evaluation"],
+        missing_criteria=["Methotrexate trial", "TB screening"],
+        rationale="Additional evidence is needed.",
+        confidence_score=0.57,
+    )
+    appeal = AppealLetter(
+        appeal_id="APL-1",
+        patient_name="James Torres",
+        member_id="EAS004",
+        insurance_company="Aetna",
+        requested_service="Humira",
+        original_decision="denied",
+        appeal_reason="Address step therapy documentation.",
+        recommended_next_steps=["Attach medication history."],
+        letter_text="March 4, 2025\n\nTo the Medical Director,\n\nPlease reconsider Humira.",
+        confidence_score=0.88,
+        citations=["Clinical note, p.3"],
+    )
+    record = CaseRecord(case_id="PA-2025-07841", patient_case=case)
+    html_chunks = []
+
+    class FakeColumn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def download_button(self, *args, **kwargs):
+            return False
+
+        def button(self, *args, **kwargs):
+            return False
+
+    class FakeExpander:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(dashboard.st, "html", lambda html: html_chunks.append(html))
+    monkeypatch.setattr(dashboard.st, "columns", lambda *args, **kwargs: [FakeColumn(), FakeColumn(), FakeColumn()])
+    monkeypatch.setattr(dashboard.st, "expander", lambda *args, **kwargs: FakeExpander())
+    monkeypatch.setattr(dashboard.st, "json", lambda *args, **kwargs: None)
+
+    dashboard._render_appeal_workspace(record, case, review, appeal, used_ai=False)
+
+    rendered = "\n".join(html_chunks)
+    assert "Appeal Letter (Editable)" in rendered
+    assert "Selected Supporting Evidence" in rendered
+    assert "Citations in Letter" in rendered
+    assert "Submit for Human Review" not in rendered
+    assert "Review Summary" in rendered
 
 
 def test_appeal_generation_error_is_rendered_without_crashing(

@@ -24,8 +24,10 @@ from app.ingestion.classifier import detect_document_sections
 from app.models.case_document import CaseDocument, DocumentCategory
 from app.models.evidence_reference import EvidenceReference
 from app.review.clinical_nlp import (
+    assertion_token,
     canonical_diagnosis,
     extract_clinical_signals,
+    mentioned_diagnosis,
     provider_role,
     specialist_role,
     step_therapy_status,
@@ -38,6 +40,7 @@ FACT_TYPES: tuple[str, ...] = (
     "member_id",
     "date_of_birth",
     "diagnosis",
+    "diagnosis_assertion",
     "requested_service",
     "insurance_company",
     "physician_name",
@@ -54,6 +57,31 @@ FACT_TYPES: tuple[str, ...] = (
 )
 
 _SEP = r"\s*[:.]+\s*"
+
+_CONVENTIONAL_DMARD_LABELS = (
+    ("methotrexate", ("methotrexate", "mtx")),
+    ("azathioprine", ("azathioprine", "aza")),
+    ("mercaptopurine", ("mercaptopurine", "6-mp")),
+    ("thiopurine", ("thiopurine",)),
+)
+
+_SYSTEMIC_STEP_LABELS = (
+    ("systemic therapy", ("systemic therapy",)),
+    ("phototherapy", ("phototherapy",)),
+)
+
+
+def _step_therapy_failure_phrase(text: str) -> str:
+    low = (text or "").lower()
+    for label, cues in _CONVENTIONAL_DMARD_LABELS:
+        if any(cue in low for cue in cues):
+            return f"{label} failure"
+    for label, cues in _SYSTEMIC_STEP_LABELS:
+        if any(cue in low for cue in cues):
+            return "step therapy failure"
+    if "dmard" in low:
+        return "conventional DMARD failure"
+    return "step therapy failure"
 
 _FIELD_LABELS: dict[str, tuple[str, ...]] = {
     "patient_name": (r"member\s+name", r"patient\s+name", r"patient", r"member"),
@@ -175,6 +203,44 @@ _CRITERION_PHRASES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
 )
 
+_STEP_REFUSAL_DOCUMENT_RE = re.compile(
+    r"\b(?:methotrexate|mtx|dmard)\b.{0,220}\b"
+    r"(?:refus(?:ed|es|al)|declin(?:ed|es)|non[-\s]?compliant|"
+    r"non[-\s]?adherent|never\s+(?:started|initiated)|"
+    r"did\s+not\s+(?:start|initiate|fill|take|ingest)|"
+    r"not\s+(?:started|initiated|filled|taken|ingested)|"
+    r"would\s+not\s+(?:start|fill|take|ingest)|"
+    r"fear(?:ful)?\s+of\s+side\s+effects|afraid\s+of\s+side\s+effects|"
+    r"concern(?:ed)?\s+about\s+side\s+effects|direct\s+biologic)",
+    re.IGNORECASE | re.DOTALL,
+)
+_STEP_REFUSAL_LINE_CUES = (
+    "refused",
+    "refusal",
+    "declined",
+    "non-compliant",
+    "non compliant",
+    "noncompliant",
+    "non-adherent",
+    "non adherent",
+    "nonadherent",
+    "never started",
+    "never initiated",
+    "did not start",
+    "did not initiate",
+    "did not fill",
+    "did not take",
+    "did not ingest",
+    "would not start",
+    "would not fill",
+    "would not take",
+    "would not ingest",
+    "fear of side effects",
+    "afraid of side effects",
+    "concerned about side effects",
+    "direct biologic",
+)
+
 _NEGATION_BEFORE_RE = re.compile(
     r"\b(no|not|without|absent|missing|lacks?|lack of|undocumented|refused|declined)\b"
     r"(?:\W+\w+){0,5}\W*$",
@@ -289,6 +355,20 @@ def _section_label(line: str) -> str | None:
     """Return the label portion (before the colon) of a 'label: value' line."""
     m = re.match(r"\s*([A-Za-z0-9 /#()\-]+?)\s*[:.]", line)
     return m.group(1).strip() if m else None
+
+
+def _step_refusal_quote(page_text: str, lines: list[str]) -> str | None:
+    """Return the best quote for split-sentence methotrexate refusal evidence."""
+    if not _STEP_REFUSAL_DOCUMENT_RE.search(page_text):
+        return None
+    for line in lines:
+        low = line.lower()
+        if any(cue in low for cue in _STEP_REFUSAL_LINE_CUES):
+            return line.strip()
+    for line in lines:
+        if "methotrexate" in line.lower() or "mtx" in line.lower():
+            return line.strip()
+    return None
 
 
 class EvidenceExtractor:
@@ -463,6 +543,21 @@ class EvidenceExtractor:
             page_number,
             page_text,
         )
+        refusal_quote = _step_refusal_quote(page_text, lines)
+        if (
+            refusal_quote
+            and not any(r.fact_type == "step_therapy_status" for r in clinical_refs)
+        ):
+            clinical_refs.append(
+                self._make_ref(
+                    document,
+                    page_number,
+                    "step_therapy_status",
+                    "refused",
+                    refusal_quote,
+                    0.85,
+                )
+            )
         if clinical_refs:
             clinical_fact_types = {r.fact_type for r in clinical_refs}
             if "criterion_specialist" in clinical_fact_types:
@@ -503,6 +598,23 @@ class EvidenceExtractor:
             quote = _clean_sentence(signal.sentence)
             if not quote:
                 continue
+
+            mentioned = mentioned_diagnosis(signal)
+            if mentioned and not signal.is_current_affirmed:
+                state = assertion_token(signal)
+                key = ("diagnosis_assertion", f"{mentioned}|{state}", quote)
+                if key not in seen:
+                    seen.add(key)
+                    refs.append(
+                        self._make_ref(
+                            document,
+                            page_number,
+                            "diagnosis_assertion",
+                            f"{mentioned}|{state}",
+                            quote,
+                            0.75,
+                        )
+                    )
 
             diagnosis = canonical_diagnosis(signal)
             if diagnosis:
@@ -567,7 +679,14 @@ class EvidenceExtractor:
 
             if document.document_type is not DocumentCategory.DENIAL_LETTER:
                 status = step_therapy_status(signal)
-                if status in {"failed", "refused", "absent"}:
+                if status in {
+                    "failed",
+                    "refused",
+                    "never_started",
+                    "in_progress",
+                    "absent",
+                    "intolerance",
+                }:
                     key = ("step_therapy_status", status, quote)
                     if key not in seen:
                         seen.add(key)
@@ -582,7 +701,7 @@ class EvidenceExtractor:
                             )
                         )
                     if status == "failed":
-                        criterion_value = "methotrexate failure"
+                        criterion_value = _step_therapy_failure_phrase(quote)
                         key = ("criterion_step_therapy", criterion_value, quote)
                         if key not in seen:
                             seen.add(key)
@@ -598,7 +717,7 @@ class EvidenceExtractor:
                             )
 
             polarity = tb_result_polarity(signal)
-            if polarity in {"positive", "negative"}:
+            if polarity in {"positive", "negative", "pending", "indeterminate", "absent"}:
                 key = ("tb_screen_result", polarity, quote)
                 if key not in seen:
                     seen.add(key)

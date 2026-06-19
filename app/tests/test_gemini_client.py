@@ -8,6 +8,7 @@ import os
 
 import pytest
 
+import app.services.factory as factory
 from app.services.factory import (
     describe_active_backend,
     describe_patient_details_backend,
@@ -23,6 +24,10 @@ def _install_fake_google_genai(monkeypatch, response=None, raise_error=None) -> 
     calls: dict = {}
 
     class FakeGenerateContentConfig:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    class FakeThinkingConfig:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
@@ -42,7 +47,8 @@ def _install_fake_google_genai(monkeypatch, response=None, raise_error=None) -> 
     genai_mod = types.ModuleType("google.genai")
     genai_mod.Client = FakeClient
     genai_mod.types = types.SimpleNamespace(
-        GenerateContentConfig=FakeGenerateContentConfig
+        GenerateContentConfig=FakeGenerateContentConfig,
+        ThinkingConfig=FakeThinkingConfig,
     )
     google_pkg.genai = genai_mod
 
@@ -79,6 +85,11 @@ def test_gemini_client_complete_uses_google_genai_config(monkeypatch):
         "system_instruction": "system prompt",
         "max_output_tokens": 321,
         "temperature": 0.2,
+        "thinking_config": request["config"].kwargs["thinking_config"],
+    }
+    assert request["config"].kwargs["thinking_config"].kwargs == {
+        "thinking_budget": 0,
+        "include_thoughts": False,
     }
 
 
@@ -89,13 +100,15 @@ def test_gemini_client_defaults_to_vertex_adc(monkeypatch):
     monkeypatch.delenv("HEALTHAI_GEMINI_USE_VERTEXAI", raising=False)
     monkeypatch.delenv("GOOGLE_GENAI_USE_VERTEXAI", raising=False)
     monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("GOOGLE_CLOUD_LOCATION", raising=False)
 
-    client = GeminiClient(model="gemini-2.5-flash")
+    client = GeminiClient(model="gemini-3.5-flash")
 
     assert client.use_vertexai is True
     assert calls["api_key"] is None
     assert os.environ["GOOGLE_GENAI_USE_VERTEXAI"] == "true"
     assert os.environ["GOOGLE_CLOUD_PROJECT"] == "gen-lang-client-0121983409"
+    assert os.environ["GOOGLE_CLOUD_LOCATION"] == "global"
 
 
 def test_gemini_client_raises_when_key_missing(monkeypatch):
@@ -149,19 +162,39 @@ def test_factory_force_gemini_returns_gemini_client(monkeypatch):
 
     assert isinstance(client, GeminiClient)
     assert client.is_ai is True
-    assert describe_active_backend(client) == "Gemini (Google) — model: gemini-2.5-flash"
+    assert describe_active_backend(client) == "Gemini (Google) — model: gemini-3.5-flash"
 
 
 def test_factory_auto_detects_gemini_when_only_gemini_key_exists(monkeypatch):
     _install_fake_google_genai(monkeypatch)
     monkeypatch.delenv("HEALTHAI_LLM_BACKEND", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(factory, "_google_adc_available", lambda: False)
     monkeypatch.setenv("GEMINI_API_KEY", "env-key")
     monkeypatch.setenv("HEALTHAI_GEMINI_USE_VERTEXAI", "false")
 
     client = get_llm_client()
 
     assert isinstance(client, GeminiClient)
+
+
+def test_factory_auto_detects_gemini_with_vertex_adc(monkeypatch):
+    _install_fake_google_genai(monkeypatch)
+    monkeypatch.delenv("HEALTHAI_LLM_BACKEND", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.delenv("HEALTHAI_GEMINI_USE_VERTEXAI", raising=False)
+    monkeypatch.delenv("GOOGLE_GENAI_USE_VERTEXAI", raising=False)
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+    monkeypatch.setattr(factory, "_google_adc_available", lambda: True)
+
+    client = get_llm_client()
+
+    assert isinstance(client, GeminiClient)
+    assert client.use_vertexai is True
 
 
 def test_patient_details_uses_task_configured_provider(monkeypatch):
@@ -177,12 +210,13 @@ def test_patient_details_uses_task_configured_provider(monkeypatch):
 
     assert isinstance(client, GeminiClient)
     assert describe_patient_details_backend(client).startswith("Gemini (Google)")
-    assert "gemini-2.5-flash" in describe_patient_details_backend(client)
+    assert "gemini-3.5-flash" in describe_patient_details_backend(client)
 
 
 def test_factory_gemini_auto_detection_degrades_to_local_without_sdk(monkeypatch):
     monkeypatch.delenv("HEALTHAI_LLM_BACKEND", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(factory, "_google_adc_available", lambda: False)
     monkeypatch.setenv("GEMINI_API_KEY", "env-key")
     monkeypatch.setitem(sys.modules, "google", types.ModuleType("google"))
     monkeypatch.delitem(sys.modules, "google.genai", raising=False)

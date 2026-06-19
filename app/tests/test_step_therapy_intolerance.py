@@ -8,7 +8,7 @@ negated toxicity mentions, and refusals must NOT pass through this exception.
 from __future__ import annotations
 
 from app.models.patient_case import Decision, PatientCase
-from app.models.review_result import Recommendation
+from app.models.review_result import CriterionStatus, Recommendation
 from app.review.clinical_nlp import extract_clinical_signals, step_therapy_status
 from app.review.engine import ClinicalReviewEngine
 
@@ -108,3 +108,37 @@ def test_refused_methotrexate_still_fails_step_therapy_after_exception_added():
     assert step.met is False
     assert "refusal" in (step.note or "").lower()
     assert result.recommendation is Recommendation.DENY
+
+
+def test_renal_failure_bypass_requires_human_review():
+    result = ClinicalReviewEngine().review(
+        _case(),
+        (
+            "Patient: Victor Fries\n"
+            "Diagnosis: Moderate to severe Rheumatoid Arthritis\n"
+            "Requested Service: Humira.\n"
+            "Methotrexate is completely bypassed because the patient has Stage 4 "
+            "chronic kidney disease and severe renal failure.\n"
+            "TB screening verified negative.\n"
+            "Rheumatologist prescribing.\n"
+            "Status: DENIED\n"
+            "Reason for Denial: Medical exception documentation requires human "
+            "specialist review."
+        ),
+    )
+
+    step = _detail(result, "STEP_THERAPY")
+    tb = _detail(result, "TB_SCREEN")
+    specialist = _detail(result, "SPECIALIST")
+
+    assert step.met is False
+    assert step.status is CriterionStatus.NOT_MET
+    assert "medical exception" in (step.note or "").lower()
+    assert tb.met is True
+    assert specialist.met is True
+    assert result.recommendation is Recommendation.DENY
+    assert result.safety_gate.get("status") == "HUMAN_REVIEW_REQUIRED"
+    assert any(
+        "medical exception" in reason.lower() or "human review" in reason.lower()
+        for reason in result.safety_gate.get("reasons", [])
+    )

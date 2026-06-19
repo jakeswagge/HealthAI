@@ -49,10 +49,32 @@ class SafetyGate:
             reasons.append(f"Governance: {reason}")
         for reason in gate.get("unresolved_conflicts", []) or []:
             reasons.append(f"Unresolved conflict: {reason}")
+        if gate.get("requires_human_review_reason"):
+            reasons.append(str(gate["requires_human_review_reason"]))
+        comparison_requires_review = bool(
+            (comparison or {}).get("requires_human_review")
+        )
+        if comparison_requires_review and not comparison.get("material_disagreements"):
+            reasons.append("Review comparison requires human review.")
         if review.confidence_score < self.settings.confidence_threshold:
             reasons.append(
                 f"Review confidence {review.confidence_score:.2f} below "
                 f"threshold {self.settings.confidence_threshold:.2f}."
+            )
+        untraceable = [
+            detail.id
+            for detail in review.criteria_detail
+            if not (
+                detail.supporting_evidence_ids
+                or detail.not_met_evidence_ids
+                or detail.missing_evidence
+            )
+        ]
+        if untraceable:
+            reasons.append(
+                "Review criterion/criteria lack traceability: "
+                + ", ".join(untraceable)
+                + "."
             )
         if (
             self.settings.block_autonomous_denials
@@ -115,11 +137,25 @@ class SafetyGate:
             reasons.append("Denial recommendation has no human sign-off.")
         if record.review_result is not None:
             review_gate = record.review_result.safety_gate or {}
+            unresolved_conflicts = review_gate.get("unresolved_conflicts") or []
+            if unresolved_conflicts and latest is None:
+                reasons.append("Review has unresolved conflicts requiring human review before export.")
             if (
                 review_gate.get("status") == SafetyGateStatus.HUMAN_REVIEW_REQUIRED.value
                 and latest is None
             ):
                 reasons.append("Review safety gate requires human review before export.")
+            # Finding 12: Also check criteria-level human-review flags
+            for detail in record.review_result.criteria_detail:
+                if (
+                    detail.note
+                    and "requires human review" in detail.note.lower()
+                    and latest is None
+                ):
+                    reasons.append(
+                        f"Criterion '{detail.id}' requires human review before export."
+                    )
+                    break  # One reason is enough to block
         if not compliance.is_compliant:
             reasons.extend(
                 f"{v.code}: {v.description}" for v in compliance.violations

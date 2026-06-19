@@ -1,0 +1,30 @@
+[
+  {
+    "case_id": "HUMIRA-001",
+    "scenario": "Positive TB",
+    "documents": [
+      "CENTRAL TEXAS RHEUMATOLOGY ASSOCIATES\nPATIENT: Diana Prince\n...QuantiFERON-TB Gold Result: POSITIVE..."
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "tb_state": "POSITIVE",
+      "step_therapy_state": "FAILED",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-002",
+    "scenario": "Refused Methotrexate",
+    "documents": [
+      "NORTHSIDE ARTHRITIS CENTER...\nPatient refused methotrexate..."
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "REFUSED",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  }
+]

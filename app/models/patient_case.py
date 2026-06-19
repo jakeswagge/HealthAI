@@ -12,6 +12,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, computed_field, field_validator
 
+from app.models.clinical_fact import ClinicalFact
+
 
 class Decision(str, Enum):
     """Normalized determination found in a prior-authorization letter."""
@@ -122,6 +124,10 @@ class PatientCase(BaseModel):
     normalized_fields: dict[str, NormalizedField] = Field(
         default_factory=dict,
         description="Per-field normalization provenance.",
+    )
+    clinical_facts: list[ClinicalFact] = Field(
+        default_factory=list,
+        description="Canonical clinical facts used by review/governance.",
     )
     extraction_backend: Optional[str] = Field(
         default=None, description="Backend/provider used for structured extraction."

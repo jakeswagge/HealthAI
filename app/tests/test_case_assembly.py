@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.assembly.engine import CaseAssemblyEngine
 from app.models.case_document import CaseDocument, DocumentCategory
 from app.models.conflict_report import ConflictSeverity
+from app.models.evidence_reference import EvidenceReference
 from app.models.review_result import Recommendation
 from app.review.engine import ClinicalReviewEngine
 
@@ -424,3 +425,44 @@ class TestHumiraWorkflowNonRegression:
 
         assert review.recommendation is Recommendation.DENY
         assert review.missing_criteria
+
+
+class TestGovernedRequestedServiceHealing:
+    def test_synthesize_from_evidence_does_not_heal_requested_service_in_governed_mode(self):
+        doc = _doc(
+            "note.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Diagnosis: Rheumatoid Arthritis\nHumira appears in a payer comment.",
+        )
+        evidence = [
+            EvidenceReference(
+                case_id="C1",
+                source_document_id=doc.document_id,
+                source_filename=doc.filename,
+                page_number=1,
+                section_label="Diagnosis",
+                quoted_text="Diagnosis: Rheumatoid Arthritis. Humira appears in a payer comment.",
+                normalized_fact="diagnosis: Rheumatoid Arthritis",
+                fact_type="diagnosis",
+                confidence_score=0.9,
+            )
+        ]
+
+        ctx = CaseAssemblyEngine().synthesize_from_evidence("C1", evidence, [doc])
+
+        assert not [
+            ev for ev in ctx.evidence if ev.fact_type == "requested_service"
+        ]
+        assert ctx.patient_case.requested_service is None
+
+    def test_assemble_can_still_heal_requested_service_from_document_text(self):
+        doc = _doc(
+            "note.txt",
+            DocumentCategory.CLINICAL_NOTE,
+            "Diagnosis: Rheumatoid Arthritis\nHumira requested.",
+        )
+
+        ctx = CaseAssemblyEngine().assemble("C1", [doc])
+
+        assert any(ev.fact_type == "requested_service" for ev in ctx.evidence)
+        assert ctx.patient_case.requested_service == "Humira (adalimumab)"

@@ -110,6 +110,7 @@ from app.models.reviewer_feedback import (
     FeedbackVerdict,
     ReviewerFeedback,
 )
+from app.policies.formulary import FormularyPolicyIndex
 from app.models.unified_case_context import UnifiedCaseContext
 from app.storage.database import DEFAULT_DB_PATH, connect, initialize_schema
 
@@ -121,6 +122,7 @@ class CaseService:
         self,
         conn: sqlite3.Connection | None = None,
         db_path: str | Path = DEFAULT_DB_PATH,
+        formulary_policy: FormularyPolicyIndex | None = None,
     ) -> None:
         # Share one connection between all repositories so a single in-memory
         # DB works for tests and a single file is used in production.
@@ -238,6 +240,7 @@ class CaseService:
         self._payer = PayerService(
             lifecycle=self._lifecycle,
             explainability=self._explainability,
+            formulary_policy=formulary_policy,
         )
         self._health = OperationalHealthMonitor(
             conn=self.conn,

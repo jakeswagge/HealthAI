@@ -18,9 +18,26 @@ changes anywhere else.
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 
 from app.services.llm_client import LLMClient, LLMError
 from app.services.local_client import LocalHeuristicClient
+
+
+def _env_truthy(value: str | None) -> bool:
+    return value is not None and value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+@lru_cache(maxsize=1)
+def _google_adc_available() -> bool:
+    """Return whether Google Application Default Credentials are configured."""
+    try:
+        import google.auth
+
+        google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+    except Exception:
+        return False
+    return True
 
 
 def get_llm_client(force: str | None = None) -> LLMClient:
@@ -61,12 +78,13 @@ def get_llm_client(force: str | None = None) -> LLMClient:
             # SDK missing or misconfigured: degrade gracefully to local.
             return LocalHeuristicClient()
 
-    # Auto-selection should use HealthAI configuration, not the SDK transport
-    # flag that GeminiClient sets internally after an explicit Gemini request.
-    gemini_vertex_enabled = os.environ.get(
-        "HEALTHAI_GEMINI_USE_VERTEXAI",
-        "",
-    ).strip().lower() in {"1", "true", "yes", "on"}
+    gemini_vertex_enabled = (
+        _env_truthy(os.environ.get("HEALTHAI_GEMINI_USE_VERTEXAI"))
+        or _env_truthy(os.environ.get("GOOGLE_GENAI_USE_VERTEXAI"))
+        or bool(os.environ.get("GOOGLE_CLOUD_PROJECT"))
+        or bool(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
+        or _google_adc_available()
+    )
     if (
         gemini_vertex_enabled
         or os.environ.get("GEMINI_API_KEY")

@@ -54,6 +54,9 @@ _TARGET_RULES: tuple[tuple[str, str], ...] = (
     ("RA", "DIAGNOSIS_RA"),
     ("Psoriatic Arthritis", "DIAGNOSIS_PSORIATIC_ARTHRITIS"),
     ("PsA", "DIAGNOSIS_PSORIATIC_ARTHRITIS"),
+    ("Lupus", "DIAGNOSIS_LUPUS"),
+    ("Systemic Lupus Erythematosus", "DIAGNOSIS_LUPUS"),
+    ("SLE", "DIAGNOSIS_LUPUS"),
     ("Methotrexate", "STEP_THERAPY"),
     ("MTX", "STEP_THERAPY"),
     ("DMARD", "STEP_THERAPY"),
@@ -62,6 +65,8 @@ _TARGET_RULES: tuple[tuple[str, str], ...] = (
     ("Mercaptopurine", "STEP_THERAPY"),
     ("6-MP", "STEP_THERAPY"),
     ("Thiopurine", "STEP_THERAPY"),
+    ("Systemic therapy", "STEP_THERAPY"),
+    ("Phototherapy", "STEP_THERAPY"),
     ("TB", "TB"),
     ("Tuberculosis", "TB"),
     ("TB screen", "TB"),
@@ -89,6 +94,14 @@ _TARGET_RULES: tuple[tuple[str, str], ...] = (
     ("Gastroenterologist", "SPECIALIST_GI"),
     ("Gastroenterology", "SPECIALIST_GI"),
     ("Specialist", "SPECIALIST_RHEUM"),
+    ("Primary care provider", "PROVIDER_PRIMARY_CARE"),
+    ("Primary care physician", "PROVIDER_PRIMARY_CARE"),
+    ("Primary care", "PROVIDER_PRIMARY_CARE"),
+    ("PCP", "PROVIDER_PRIMARY_CARE"),
+    ("Family physician", "PROVIDER_PRIMARY_CARE"),
+    ("Internist", "PROVIDER_PRIMARY_CARE"),
+    ("Internal Medicine", "PROVIDER_PRIMARY_CARE"),
+    ("Internal medicine physician", "PROVIDER_PRIMARY_CARE"),
     ("Chiro", "PROVIDER_CHIROPRACTIC"),
     ("Chiropractor", "PROVIDER_CHIROPRACTIC"),
     ("Chiropractic", "PROVIDER_CHIROPRACTIC"),
@@ -101,6 +114,7 @@ _DIFFERENTIAL_RE = re.compile(
 _DIAGNOSIS_CANONICAL = {
     "DIAGNOSIS_RA": "Rheumatoid Arthritis",
     "DIAGNOSIS_PSORIATIC_ARTHRITIS": "Psoriatic Arthritis",
+    "DIAGNOSIS_LUPUS": "Systemic Lupus Erythematosus",
 }
 _SPECIALIST_ROLE_CANONICAL = {
     "SPECIALIST_RHEUM": "rheumatology specialist",
@@ -109,6 +123,7 @@ _SPECIALIST_ROLE_CANONICAL = {
 }
 _PROVIDER_ROLE_CANONICAL = {
     **_SPECIALIST_ROLE_CANONICAL,
+    "PROVIDER_PRIMARY_CARE": "primary care provider",
     "PROVIDER_CHIROPRACTIC": "chiropractic provider",
 }
 _TB_NEGATIVE_CUES = (
@@ -129,6 +144,17 @@ _TB_POSITIVE_CUES = (
     "active tuberculosis",
     "latent tb infection",
     "latent tuberculosis infection",
+)
+_TB_PENDING_CUES = (
+    "pending",
+    "awaiting",
+    "ordered",
+    "in progress",
+)
+_TB_INDETERMINATE_CUES = (
+    "indeterminate",
+    "equivocal",
+    "invalid",
 )
 _TB_ABSENCE_CUES = (
     "no tb screening",
@@ -169,10 +195,47 @@ _STEP_FAILURE_CUES = (
 _STEP_REFUSAL_CUES = (
     "refused",
     "refusal",
+    "refused to fill",
+    "refused to ingest",
+    "refused to take",
     "declined",
     "declines",
+    "declined treatment",
+    "declined therapy",
     "patient refused",
     "patient declined",
+    "non-compliant",
+    "non compliant",
+    "noncompliant",
+    "non-adherent",
+    "non adherent",
+    "nonadherent",
+    "never started",
+    "never initiated",
+    "did not start",
+    "did not initiate",
+    "did not fill",
+    "did not take",
+    "did not ingest",
+    "would not start",
+    "would not fill",
+    "would not take",
+    "would not ingest",
+)
+_STEP_NEVER_STARTED_CUES = (
+    "never started",
+    "never initiated",
+    "did not start",
+    "did not initiate",
+    "not started",
+    "not initiated",
+)
+_STEP_IN_PROGRESS_CUES = (
+    "currently taking",
+    "currently on",
+    "in progress",
+    "ongoing",
+    "started",
 )
 _STEP_ABSENCE_CUES = (
     "no methotrexate",
@@ -202,6 +265,22 @@ _STEP_ADVERSE_EVENT_CUES = (
     "adverse event",
     "serious adverse",
 )
+_STEP_CONTRAINDICATION_CONDITION_CUES = (
+    "stage 4 chronic kidney disease",
+    "stage iv chronic kidney disease",
+    "advanced chronic kidney disease",
+    "severe chronic kidney disease",
+    "ckd stage 4",
+    "stage 4 ckd",
+    "severe renal failure",
+    "renal failure",
+    "kidney failure",
+    "renal impairment",
+    "renal insufficiency",
+    "hepatic cirrhosis",
+    "cirrhosis",
+    "severe liver disease",
+)
 _STEP_ATTRIBUTION_CUES = (
     "attributable to",
     "attributed to",
@@ -209,8 +288,12 @@ _STEP_ATTRIBUTION_CUES = (
     "secondary to",
     "caused by",
     "induced",
+    "because",
+    "because of",
     "discontinued because",
     "stopped because",
+    "bypassed because",
+    "bypassed due to",
 )
 _STEP_DIRECT_INTOLERANCE_CUES = (
     "could not tolerate",
@@ -218,6 +301,10 @@ _STEP_DIRECT_INTOLERANCE_CUES = (
     "did not tolerate",
     "not tolerated",
     "contraindicated",
+    "contraindication",
+    "bypassed",
+    "avoid",
+    "avoided",
 )
 _STEP_ADVERSE_NEGATION_CUES = (
     "no evidence of",
@@ -327,6 +414,30 @@ def canonical_diagnosis(signal: ClinicalSignal) -> str | None:
     return _DIAGNOSIS_CANONICAL.get(signal.label)
 
 
+def mentioned_diagnosis(signal: ClinicalSignal) -> str | None:
+    """Return the canonical diagnosis mention, regardless of assertion status."""
+    return _DIAGNOSIS_CANONICAL.get(signal.label)
+
+
+def assertion_token(signal: ClinicalSignal) -> str:
+    """Return the canonical assertion token for a signal."""
+    if "family history" in signal.sentence.lower():
+        return "FAMILY_HISTORY"
+    if signal.is_negated:
+        return "NEGATED"
+    if signal.is_historical:
+        return "HISTORICAL"
+    if signal.is_family:
+        return "FAMILY_HISTORY"
+    if signal.is_hypothetical:
+        return "HYPOTHETICAL"
+    if signal.is_differential:
+        return "DIFFERENTIAL"
+    if signal.is_uncertain:
+        return "UNCERTAIN"
+    return "AFFIRMED"
+
+
 def specialist_role(signal: ClinicalSignal) -> str | None:
     """Return a normalized accepted specialist role for current evidence."""
     if not signal.is_current_affirmed:
@@ -352,6 +463,10 @@ def _is_step_intolerance_sentence(sentence: str) -> bool:
         return False
     if _has_any(sentence, _STEP_DIRECT_INTOLERANCE_CUES):
         return True
+    if _has_any(sentence, _STEP_CONTRAINDICATION_CONDITION_CUES) and _has_any(
+        sentence, _STEP_ATTRIBUTION_CUES + _STEP_DIRECT_INTOLERANCE_CUES
+    ):
+        return True
     return _has_any(sentence, _STEP_ADVERSE_EVENT_CUES) and _has_any(
         sentence, _STEP_ATTRIBUTION_CUES
     )
@@ -369,11 +484,17 @@ def step_therapy_status(signal: ClinicalSignal) -> str | None:
     ):
         return None
     if _has_any(signal.sentence, _STEP_REFUSAL_CUES):
+        if _has_any(signal.sentence, _STEP_NEVER_STARTED_CUES):
+            return "never_started"
         return "refused"
     if _is_step_intolerance_sentence(signal.sentence):
         return "intolerance"
     if signal.is_negated or _has_any(signal.sentence, _STEP_ABSENCE_CUES):
         return "absent"
+    if _has_any(signal.sentence, _STEP_IN_PROGRESS_CUES) and not _has_any(
+        signal.sentence, _STEP_FAILURE_CUES
+    ):
+        return "in_progress"
     if _has_any(signal.sentence, _STEP_FAILURE_CUES):
         return "failed"
     return "unknown"
@@ -391,6 +512,10 @@ def tb_result_polarity(signal: ClinicalSignal) -> str | None:
         return "negative"
     if _has_any(signal.sentence, _TB_POSITIVE_CUES):
         return "positive"
+    if _has_any(signal.sentence, _TB_PENDING_CUES):
+        return "pending"
+    if _has_any(signal.sentence, _TB_INDETERMINATE_CUES):
+        return "indeterminate"
     if _has_any(signal.text, _TB_TEST_CUES) or _has_any(signal.sentence, _TB_TEST_CUES):
         return "unknown"
-    return "positive"
+    return "unknown"

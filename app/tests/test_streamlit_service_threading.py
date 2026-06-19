@@ -35,6 +35,27 @@ def test_case_service_cache_is_thread_local(monkeypatch):
     assert main_first is not worker_services[0]
 
 
+def test_reset_case_service_closes_and_drops_thread_local_service(monkeypatch):
+    """Reset must release the sqlite handle before deleting the DB file."""
+
+    class DummyService:
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(common, "CaseService", DummyService)
+    monkeypatch.setattr(common, "_SERVICE_LOCAL", threading.local())
+
+    first = common.get_case_service()
+    common.reset_case_service()
+    second = common.get_case_service()
+
+    assert first.closed is True
+    assert second is not first
+
+
 def test_thread_local_services_do_not_share_sqlite_connections(
     monkeypatch, tmp_path
 ):

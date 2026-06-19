@@ -1,0 +1,198 @@
+[
+  {
+    "case_id": "HUMIRA-011",
+    "scenario": "PCP Mismatch Deny",
+    "documents": [
+      {
+        "filename": "pcp_initial_evaluation.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Clark Kent\nMember ID: HAI-011\nDiagnosis: Active severe Rheumatoid Arthritis\nRequested Service: Humira (adalimumab) 40mg SC every 2 weeks.\nMethotrexate failed due to lack of efficacy after 24 weeks.\nTB screen negative via QuantiFERON gold lab.\nPrimary Care Physician prescribing.\nStatus: DENIED\nReason for Denial: Prior authorization guidelines require a specialist prescription."
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "diagnosis_state": "ACTIVE",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "FAILED",
+      "provider_state": "NON_SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-012",
+    "scenario": "Insufficient Step Therapy Duration",
+    "documents": [
+      {
+        "filename": "short_trial_note.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Hal Jordan\nMember ID: HAI-012\nDiagnosis: Moderate to severe Rheumatoid Arthritis\nRequested Service: Humira.\nMethotrexate initiated but discontinued by patient after 2 weeks due to mild nausea.\nTB screen is negative.\nRheumatologist prescribing.\nStatus: DENIED\nReason for Denial: Conventional DMARD trial duration is insufficient."
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "diagnosis_state": "ACTIVE",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "INTOLERANT",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-013",
+    "scenario": "Active Severe Infection Contraindication",
+    "documents": [
+      {
+        "filename": "hospital_infection_note.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Bruce Wayne\nMember ID: HAI-013\nDiagnosis: Severe Crohn's Disease\nRequested Service: Humira starter pack.\nPatient failed conventional therapy with sulfasalazine.\nTB test clear.\nGastroenterologist prescribing.\nStatus: DENIED\nReason for Denial: Patient currently hospitalized with active systemic sepsis infection."
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "diagnosis_state": "ACTIVE",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "FAILED",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-014",
+    "scenario": "Dual Biologic Duplication Gate",
+    "documents": [
+      {
+        "filename": "biologic_duplication_note.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Arthur Curry\nMember ID: HAI-014\nDiagnosis: Plaque Psoriasis and Ulcerative Colitis\nRequested Service: Humira.\nPatient is currently responding well to Stelara infusions for Colitis.\nDermatologist requests adding Humira concurrently to address skin flares.\nTB screening negative.\nStatus: DENIED\nReason for Denial: Concomitant dual advanced biologic therapy is prohibited."
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "diagnosis_state": "ACTIVE",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "UNKNOWN",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-015",
+    "scenario": "Step Therapy Exception Permitted",
+    "documents": [
+      {
+        "filename": "renal_failure_exception.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Victor Fries\nMember ID: HAI-015\nDiagnosis: Moderate to severe Rheumatoid Arthritis\nRequested Service: Humira.\nMethotrexate is completely bypassed because the patient has Stage 4 chronic kidney disease and severe renal failure.\nTB screening verified negative.\nRheumatologist prescribing.\nStatus: DENIED\nReason for Denial: Medical exception documentation requires human specialist review."
+      }
+    ],
+    "expected": {
+      "recommendation": "HUMAN_REVIEW",
+      "diagnosis_state": "ACTIVE",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "CONTRAINDICATED",
+      "provider_state": "SPECIALIST",
+      "human_review": true
+    }
+  },
+  {
+    "case_id": "HUMIRA-016",
+    "scenario": "Missing Objective Diagnostic Metric",
+    "documents": [
+      {
+        "filename": "missing_metrics_note.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Dick Grayson\nMember ID: HAI-016\nDiagnosis: Plaque Psoriasis\nRequested Service: Humira.\nTopical steroids failed after 3 months. TB screen negative.\nDermatologist prescribing.\nClinical note states patches are cosmetically frustrating but lacks documentation of affected Body Surface Area (BSA) or PASI score.\nStatus: DENIED\nReason for Denial: Severity metrics were not established."
+      }
+    ],
+    "expected": {
+      "recommendation": "DENY",
+      "diagnosis_state": "ACTIVE",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "FAILED",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-017",
+    "scenario": "Diagnosis Ambiguity Differential",
+    "documents": [
+      {
+        "filename": "differential_diagnosis_note.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Barbara Gordon\nMember ID: HAI-017\nPresentation: Severe polyarthritis and joint pain.\nRequested Service: Humira.\nDifferential diagnoses include Rheumatoid Arthritis vs. Lyme Arthritis. Serology is currently pending.\nMethotrexate failed after 12 weeks. TB test negative.\nRheumatologist prescribing.\nStatus: DENIED\nReason for Denial: Definitively covered diagnosis is not established."
+      }
+    ],
+    "expected": {
+      "recommendation": "HUMAN_REVIEW",
+      "diagnosis_state": "CONFLICT",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "FAILED",
+      "provider_state": "SPECIALIST",
+      "human_review": true
+    }
+  },
+  {
+    "case_id": "HUMIRA-018",
+    "scenario": "Varying Step Therapy Outcomes Conflict",
+    "documents": [
+      {
+        "filename": "clinic_visit_alpha.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Tim Drake\nMember ID: HAI-018\nDiagnosis: Rheumatoid Arthritis\nRequested Service: Humira.\nRheumatologist notes patient completed a full 6-month course of Methotrexate with absolute failure of therapeutic response."
+      },
+      {
+        "filename": "pharmacy_audit_beta.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient never picked up or initiated conventional DMARD Methotrexate therapy due to compliance tracking discrepancies."
+      }
+    ],
+    "expected": {
+      "recommendation": "HUMAN_REVIEW",
+      "tb_state": "UNKNOWN",
+      "step_therapy_state": "CONFLICT",
+      "human_review": true
+    }
+  },
+  {
+    "case_id": "HUMIRA-019",
+    "scenario": "Latent TB Treatment Clearance",
+    "documents": [
+      {
+        "filename": "infectious_disease_clearance.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Selina Kyle\nMember ID: HAI-019\nDiagnosis: Severe Ankylosing Spondylitis\nRequested Service: Humira.\nPatient previously tested positive for latent TB but has now completed a full, verified 9-month course of Isoniazid prophylactic therapy.\nInfectious disease clears the patient for anti-TNF biologic initiation.\nPrescribed by a board certified Rheumatologist.\nStatus: DENIED"
+      }
+    ],
+    "expected": {
+      "recommendation": "APPROVE",
+      "diagnosis_state": "ACTIVE",
+      "tb_state": "NEGATIVE",
+      "step_therapy_state": "FAILED",
+      "provider_state": "SPECIALIST",
+      "human_review": false
+    }
+  },
+  {
+    "case_id": "HUMIRA-020",
+    "scenario": "Payer vs Clinical Provider Conflict",
+    "documents": [
+      {
+        "filename": "specialist_auth_demand.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Patient: Oliver Queen\nMember ID: HAI-020\nDiagnosis: Severe Crohn's Disease\nRequested Service: Humira.\nGastroenterologist explicitly orders immediate biologic intervention.\nTB test clear. Conventional immunosuppressants failed."
+      },
+      {
+        "filename": "peer_review_denial.txt",
+        "document_type": "CLINICAL_NOTE",
+        "text": "Medical director review finds the patient's Crohn's disease is currently classified as mild, contradicting the provider statement."
+      }
+    ],
+    "expected": {
+      "recommendation": "HUMAN_REVIEW",
+      "diagnosis_state": "CONFLICT",
+      "provider_state": "SPECIALIST",
+      "human_review": true
+    }
+  }
+]

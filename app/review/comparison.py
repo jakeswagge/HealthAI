@@ -110,6 +110,47 @@ def compare_reviews(
     return comparison
 
 
+def reconcile_ai_review_with_deterministic(
+    deterministic: ReviewResult,
+    ai: ReviewResult,
+) -> ReviewResult:
+    """Carry deterministic safety findings onto an AI review artifact.
+
+    The AI remains the reasoning backend, but deterministic contraindication
+    extraction is the safety floor used by the compare workflow.
+    """
+    if deterministic.recommendation is ai.recommendation:
+        for finding in deterministic.contraindications_found:
+            if finding not in ai.contraindications_found:
+                ai.contraindications_found.append(finding)
+    # Finding 10: Merge any criteria_detail entries the AI is missing.
+    ai_detail_ids = {detail.id for detail in ai.criteria_detail}
+    for det_detail in deterministic.criteria_detail:
+        if det_detail.id and det_detail.id not in ai_detail_ids:
+            copied = det_detail.model_copy(deep=True)
+            copied.review_backend = det_detail.review_backend or "deterministic"
+            ai.criteria_detail.append(copied)
+            ai_detail_ids.add(det_detail.id)
+    det_gate = deterministic.safety_gate or {}
+    if det_gate.get("status") == "HUMAN_REVIEW_REQUIRED":
+        ai_gate = dict(ai.safety_gate or {})
+        ai_gate.setdefault("status", "HUMAN_REVIEW_REQUIRED")
+        reasons = list(ai_gate.get("reasons") or [])
+        gate_reason = det_gate.get("requires_human_review_reason")
+        if gate_reason and gate_reason not in reasons:
+            reasons.append(str(gate_reason))
+        for reason in det_gate.get("reasons", []) or []:
+            if reason not in reasons:
+                reasons.append(str(reason))
+        if reasons:
+            ai_gate["reasons"] = reasons
+        ai_gate["requires_human_review_reason"] = det_gate.get(
+            "requires_human_review_reason"
+        )
+        ai.safety_gate = ai_gate
+    return ai
+
+
 def cited_evidence_ids(review: ReviewResult) -> set[str]:
     """Return all EvidenceReference ids cited by a review result."""
     ids = {
@@ -124,6 +165,7 @@ def cited_evidence_ids(review: ReviewResult) -> set[str]:
         ids.update(values)
     for detail in review.criteria_detail:
         ids.update(detail.supporting_evidence_ids)
+        ids.update(detail.not_met_evidence_ids)
     return {str(value).strip() for value in ids if str(value).strip()}
 
 

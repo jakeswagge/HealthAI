@@ -1,0 +1,611 @@
+{
+  "total": 25,
+  "auto_decided_total": 10,
+  "human_review_total": 15,
+  "coverage_rate": 0.4,
+  "auto_decided_accuracy": 1.0,
+  "false_approve_count": 0,
+  "false_approve_rate": 0.0,
+  "traceability_rate": 1.0,
+  "safety_slice_failures": {},
+  "criterion_total": 0,
+  "criterion_correct": 0,
+  "criterion_accuracy": 0.0,
+  "target_accuracy": 0.999,
+  "passes_release_gate": true,
+  "calibration": {
+    "overall": {
+      "total": 25,
+      "correct": 25,
+      "accuracy": 1.0,
+      "false_approves": 0,
+      "false_approve_rate": 0.0
+    },
+    "by_recommendation": {
+      "APPROVE": {
+        "total": 10,
+        "correct": 10,
+        "accuracy": 1.0,
+        "false_approves": 0,
+        "false_approve_rate": 0.0
+      },
+      "DENY": {
+        "total": 10,
+        "correct": 10,
+        "accuracy": 1.0,
+        "false_approves": 0,
+        "false_approve_rate": 0.0
+      },
+      "INSUFFICIENT_INFORMATION": {
+        "total": 5,
+        "correct": 5,
+        "accuracy": 1.0,
+        "false_approves": 0,
+        "false_approve_rate": 0.0
+      }
+    },
+    "by_slice": {
+      "autoimmune_biologic": {
+        "total": 10,
+        "correct": 10,
+        "accuracy": 1.0,
+        "false_approves": 0,
+        "false_approve_rate": 0.0
+      },
+      "imaging": {
+        "total": 10,
+        "correct": 10,
+        "accuracy": 1.0,
+        "false_approves": 0,
+        "false_approve_rate": 0.0
+      },
+      "specialist": {
+        "total": 6,
+        "correct": 6,
+        "accuracy": 1.0,
+        "false_approves": 0,
+        "false_approve_rate": 0.0
+      },
+      "step_therapy": {
+        "total": 5,
+        "correct": 5,
+        "accuracy": 1.0,
+        "false_approves": 0,
+        "false_approve_rate": 0.0
+      },
+      "tb": {
+        "total": 5,
+        "correct": 5,
+        "accuracy": 1.0,
+        "false_approves": 0,
+        "false_approve_rate": 0.0
+      },
+      "therapy": {
+        "total": 7,
+        "correct": 7,
+        "accuracy": 1.0,
+        "false_approves": 0,
+        "false_approve_rate": 0.0
+      }
+    },
+    "min_examples": 5,
+    "unsupported_bucket_cap": 0.9,
+    "unsupported_safety_slice_cap": 0.85,
+    "false_approve_cap": 0.5
+  },
+  "results": [
+    {
+      "case_id": "humira_ra_full_criteria",
+      "expected": "APPROVE",
+      "predicted": "APPROVE",
+      "auto_decided": true,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 1.0,
+      "reasons": [],
+      "slices": [
+        "autoimmune_biologic",
+        "tb",
+        "step_therapy",
+        "specialist"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-HUMIRA-001",
+      "error": null
+    },
+    {
+      "case_id": "humira_crohn_full_criteria",
+      "expected": "APPROVE",
+      "predicted": "APPROVE",
+      "auto_decided": true,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 1.0,
+      "reasons": [],
+      "slices": [
+        "autoimmune_biologic",
+        "tb",
+        "step_therapy",
+        "specialist"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-HUMIRA-001",
+      "error": null
+    },
+    {
+      "case_id": "enbrel_ra_full_criteria",
+      "expected": "APPROVE",
+      "predicted": "APPROVE",
+      "auto_decided": true,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 1.0,
+      "reasons": [],
+      "slices": [
+        "autoimmune_biologic",
+        "tb",
+        "step_therapy",
+        "specialist"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-ENBREL-001",
+      "error": null
+    },
+    {
+      "case_id": "enbrel_psoriasis_full_criteria",
+      "expected": "APPROVE",
+      "predicted": "APPROVE",
+      "auto_decided": true,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 1.0,
+      "reasons": [],
+      "slices": [
+        "autoimmune_biologic",
+        "tb",
+        "specialist"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-ENBREL-001",
+      "error": null
+    },
+    {
+      "case_id": "mri_lumbar_radiculopathy",
+      "expected": "APPROVE",
+      "predicted": "APPROVE",
+      "auto_decided": true,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 1.0,
+      "reasons": [],
+      "slices": [
+        "imaging",
+        "therapy"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-MRI-LUMBAR-001",
+      "error": null
+    },
+    {
+      "case_id": "mri_lumbar_radicular_numbness",
+      "expected": "APPROVE",
+      "predicted": "APPROVE",
+      "auto_decided": true,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 1.0,
+      "reasons": [],
+      "slices": [
+        "imaging"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-MRI-LUMBAR-001",
+      "error": null
+    },
+    {
+      "case_id": "ct_chest_nodule",
+      "expected": "APPROVE",
+      "predicted": "APPROVE",
+      "auto_decided": true,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 1.0,
+      "reasons": [],
+      "slices": [
+        "imaging"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-CT-CHEST-001",
+      "error": null
+    },
+    {
+      "case_id": "ct_chest_suspected_malignancy",
+      "expected": "APPROVE",
+      "predicted": "APPROVE",
+      "auto_decided": true,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 1.0,
+      "reasons": [],
+      "slices": [
+        "imaging"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-CT-CHEST-001",
+      "error": null
+    },
+    {
+      "case_id": "pt_knee_full_criteria",
+      "expected": "APPROVE",
+      "predicted": "APPROVE",
+      "auto_decided": true,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 1.0,
+      "reasons": [],
+      "slices": [
+        "therapy"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-PT-001",
+      "error": null
+    },
+    {
+      "case_id": "pt_shoulder_full_criteria",
+      "expected": "APPROVE",
+      "predicted": "APPROVE",
+      "auto_decided": true,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 1.0,
+      "reasons": [],
+      "slices": [
+        "therapy"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-PT-001",
+      "error": null
+    },
+    {
+      "case_id": "humira_missing_step_therapy",
+      "expected": "DENY",
+      "predicted": "DENY",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.95,
+      "reasons": [
+        "Calibrated review confidence 0.95 below auto-decision threshold 0.99.",
+        "Criterion status unknown: TB_SCREEN, SPECIALIST."
+      ],
+      "slices": [
+        "autoimmune_biologic",
+        "step_therapy"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-HUMIRA-001",
+      "error": null
+    },
+    {
+      "case_id": "humira_missing_tb_screen",
+      "expected": "DENY",
+      "predicted": "DENY",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.95,
+      "reasons": [
+        "Calibrated review confidence 0.95 below auto-decision threshold 0.99.",
+        "Criterion status unknown: STEP_THERAPY, SPECIALIST."
+      ],
+      "slices": [
+        "autoimmune_biologic",
+        "tb"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-HUMIRA-001",
+      "error": null
+    },
+    {
+      "case_id": "enbrel_missing_step_therapy",
+      "expected": "DENY",
+      "predicted": "DENY",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.95,
+      "reasons": [
+        "Calibrated review confidence 0.95 below auto-decision threshold 0.99.",
+        "Criterion status unknown: TB_SCREEN, SPECIALIST."
+      ],
+      "slices": [
+        "autoimmune_biologic",
+        "step_therapy"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-ENBREL-001",
+      "error": null
+    },
+    {
+      "case_id": "enbrel_missing_specialist",
+      "expected": "DENY",
+      "predicted": "DENY",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.95,
+      "reasons": [
+        "Calibrated review confidence 0.95 below auto-decision threshold 0.99.",
+        "Criterion status unknown: STEP_THERAPY, TB_SCREEN."
+      ],
+      "slices": [
+        "autoimmune_biologic",
+        "specialist"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-ENBREL-001",
+      "error": null
+    },
+    {
+      "case_id": "mri_lumbar_missing_conservative",
+      "expected": "DENY",
+      "predicted": "DENY",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.95,
+      "reasons": [
+        "Calibrated review confidence 0.95 below auto-decision threshold 0.99.",
+        "Criterion status unknown: NEURO_FINDINGS."
+      ],
+      "slices": [
+        "imaging",
+        "therapy"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-MRI-LUMBAR-001",
+      "error": null
+    },
+    {
+      "case_id": "mri_lumbar_missing_neuro",
+      "expected": "DENY",
+      "predicted": "DENY",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.95,
+      "reasons": [
+        "Calibrated review confidence 0.95 below auto-decision threshold 0.99.",
+        "Criterion status unknown: CONSERVATIVE_THERAPY."
+      ],
+      "slices": [
+        "imaging"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-MRI-LUMBAR-001",
+      "error": null
+    },
+    {
+      "case_id": "ct_chest_missing_prior_imaging",
+      "expected": "DENY",
+      "predicted": "DENY",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.95,
+      "reasons": [
+        "Calibrated review confidence 0.95 below auto-decision threshold 0.99.",
+        "Criterion status unknown: INDICATION."
+      ],
+      "slices": [
+        "imaging"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-CT-CHEST-001",
+      "error": null
+    },
+    {
+      "case_id": "ct_chest_missing_indication",
+      "expected": "DENY",
+      "predicted": "DENY",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.95,
+      "reasons": [
+        "Calibrated review confidence 0.95 below auto-decision threshold 0.99.",
+        "Criterion status unknown: PRIOR_IMAGING."
+      ],
+      "slices": [
+        "imaging"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-CT-CHEST-001",
+      "error": null
+    },
+    {
+      "case_id": "pt_missing_treatment_plan",
+      "expected": "DENY",
+      "predicted": "DENY",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.95,
+      "reasons": [
+        "Calibrated review confidence 0.95 below auto-decision threshold 0.99.",
+        "Criterion status unknown: PHYSICIAN_REFERRAL."
+      ],
+      "slices": [
+        "therapy"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-PT-001",
+      "error": null
+    },
+    {
+      "case_id": "pt_missing_referral",
+      "expected": "DENY",
+      "predicted": "DENY",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.95,
+      "reasons": [
+        "Calibrated review confidence 0.95 below auto-decision threshold 0.99.",
+        "Criterion status unknown: FUNCTIONAL_DEFICIT, TREATMENT_PLAN."
+      ],
+      "slices": [
+        "therapy"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-PT-001",
+      "error": null
+    },
+    {
+      "case_id": "humira_only_diagnosis",
+      "expected": "INSUFFICIENT_INFORMATION",
+      "predicted": "INSUFFICIENT_INFORMATION",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.295,
+      "reasons": [
+        "Calibrated review confidence 0.29 below auto-decision threshold 0.99.",
+        "Criterion status unknown: STEP_THERAPY, TB_SCREEN, SPECIALIST."
+      ],
+      "slices": [
+        "autoimmune_biologic"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-HUMIRA-001",
+      "error": null
+    },
+    {
+      "case_id": "mri_lumbar_only_neuro",
+      "expected": "INSUFFICIENT_INFORMATION",
+      "predicted": "INSUFFICIENT_INFORMATION",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.32,
+      "reasons": [
+        "Calibrated review confidence 0.32 below auto-decision threshold 0.99.",
+        "Criterion status unknown: CONSERVATIVE_THERAPY."
+      ],
+      "slices": [
+        "imaging"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-MRI-LUMBAR-001",
+      "error": null
+    },
+    {
+      "case_id": "ct_chest_only_indication",
+      "expected": "INSUFFICIENT_INFORMATION",
+      "predicted": "INSUFFICIENT_INFORMATION",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.32,
+      "reasons": [
+        "Calibrated review confidence 0.32 below auto-decision threshold 0.99.",
+        "Criterion status unknown: PRIOR_IMAGING."
+      ],
+      "slices": [
+        "imaging"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-CT-CHEST-001",
+      "error": null
+    },
+    {
+      "case_id": "pt_only_functional_deficit",
+      "expected": "INSUFFICIENT_INFORMATION",
+      "predicted": "INSUFFICIENT_INFORMATION",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.303,
+      "reasons": [
+        "Calibrated review confidence 0.30 below auto-decision threshold 0.99.",
+        "Criterion status unknown: TREATMENT_PLAN, PHYSICIAN_REFERRAL."
+      ],
+      "slices": [
+        "therapy"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-PT-001",
+      "error": null
+    },
+    {
+      "case_id": "enbrel_dx_and_specialist_only",
+      "expected": "INSUFFICIENT_INFORMATION",
+      "predicted": "INSUFFICIENT_INFORMATION",
+      "auto_decided": false,
+      "correct": true,
+      "false_approve": false,
+      "confidence_score": 0.32,
+      "reasons": [
+        "Calibrated review confidence 0.32 below auto-decision threshold 0.99.",
+        "Criterion status unknown: STEP_THERAPY, TB_SCREEN."
+      ],
+      "slices": [
+        "autoimmune_biologic",
+        "specialist"
+      ],
+      "criterion_total": 0,
+      "criterion_correct": 0,
+      "criterion_mismatches": [],
+      "guideline_id": "GL-ENBREL-001",
+      "error": null
+    }
+  ]
+}

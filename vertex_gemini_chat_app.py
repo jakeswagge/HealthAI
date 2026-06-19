@@ -10,13 +10,20 @@ from __future__ import annotations
 import os
 
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
-os.environ["GOOGLE_CLOUD_PROJECT"] = "gen-lang-client-0121983409"
+os.environ["GOOGLE_CLOUD_PROJECT"] = os.environ.get(
+    "GOOGLE_CLOUD_PROJECT",
+    "skilled-loader-468413-j6",
+)
+os.environ["GOOGLE_CLOUD_LOCATION"] = os.environ.get(
+    "GOOGLE_CLOUD_LOCATION",
+    "global",
+)
 
 import streamlit as st
 from google import genai
 
 
-MODEL = os.environ.get("HEALTHAI_GEMINI_MODEL", "gemini-2.5-flash")
+MODEL = os.environ.get("HEALTHAI_GEMINI_MODEL", "gemini-3.5-flash")
 
 
 def _client():

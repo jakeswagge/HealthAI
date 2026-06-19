@@ -32,7 +32,11 @@ class FactConflict(BaseModel):
     evidence_ids: list[str] = Field(
         default_factory=list, description="Evidence references involved."
     )
+    clinical_fact_ids: list[str] = Field(
+        default_factory=list, description="Canonical clinical facts involved."
+    )
     description: str = Field(default="")
+    requires_human_review_reason: str = Field(default="")
     # Stable id so human resolutions can reference a conflict across reruns.
     # Deterministic per (case_id, fact_type); populated by the assembly engine.
     conflict_id: str = Field(default="")

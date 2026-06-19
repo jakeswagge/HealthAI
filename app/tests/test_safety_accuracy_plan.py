@@ -14,8 +14,9 @@ from app.cases.service import CaseService
 from app.cases.workqueue import WorkqueueBucket, bucket_for_case
 from app.guidelines.repository import get_default_repository
 from app.models.case_document import CaseDocument, DocumentCategory
-from app.models.case_record import CaseStatus, HumanDecision
-from app.models.governance import GovernanceSettings
+from app.governance.safety import SafetyGate
+from app.models.case_record import CaseRecord, CaseStatus, HumanDecision, HumanReviewDecision
+from app.models.governance import EvidenceMode, GovernanceComplianceReport, GovernanceSettings
 from app.models.patient_case import Decision, PatientCase
 from app.models.review_result import Recommendation, ReviewResult
 from app.models.safety import AppealVerificationStatus, SafetyGateStatus
@@ -113,6 +114,70 @@ def test_export_blocks_unverified_appeal(service):
 
     with pytest.raises(ExportBlockedError):
         service.mark_exported(rec.case_id)
+
+
+def test_export_blocks_unresolved_review_conflicts_without_human_decision():
+    record = CaseRecord(
+        case_id="C-CONFLICT",
+        patient_case=_case(),
+        review_result=ReviewResult(
+            recommendation=Recommendation.APPROVE,
+            matched_criteria=["Diagnosis confirmed"],
+            rationale="Approved despite conflict.",
+            confidence_score=0.9,
+            safety_gate={
+                "unresolved_conflicts": [
+                    "Unresolved clinical fact conflict in DIAGNOSIS (2 fact(s))."
+                ]
+            },
+        ),
+    )
+    compliance = GovernanceComplianceReport(case_id="C-CONFLICT", mode=EvidenceMode.DRAFT)
+    settings = GovernanceSettings(
+        require_human_review_before_export=False,
+        block_autonomous_denials=False,
+        require_verified_appeal_claims=False,
+    )
+
+    gate = SafetyGate(settings).export(record, compliance)
+
+    assert gate.blocked
+    assert any("unresolved conflicts" in reason.lower() for reason in gate.reasons)
+
+
+def test_export_conflict_block_clears_after_human_decision():
+    record = CaseRecord(
+        case_id="C-CONFLICT",
+        patient_case=_case(),
+        review_result=ReviewResult(
+            recommendation=Recommendation.APPROVE,
+            matched_criteria=["Diagnosis confirmed"],
+            rationale="Approved after review.",
+            confidence_score=0.9,
+            safety_gate={
+                "unresolved_conflicts": [
+                    "Unresolved clinical fact conflict in DIAGNOSIS (2 fact(s))."
+                ]
+            },
+        ),
+        review_decisions=[
+            HumanReviewDecision(
+                reviewer_name="Reviewer",
+                decision=HumanDecision.APPROVE,
+                comments="Conflict reviewed.",
+            )
+        ],
+    )
+    compliance = GovernanceComplianceReport(case_id="C-CONFLICT", mode=EvidenceMode.DRAFT)
+    settings = GovernanceSettings(
+        require_human_review_before_export=False,
+        block_autonomous_denials=False,
+        require_verified_appeal_claims=False,
+    )
+
+    gate = SafetyGate(settings).export(record, compliance)
+
+    assert not gate.blocked
 
 
 def test_appeal_verifier_corrects_unsupported_claims():

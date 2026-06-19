@@ -188,13 +188,18 @@ $env:HEALTHAI_CLAUDE_MODEL = "claude-opus-4-8"
 
 # Gemini on Vertex AI (recommended; uses ADC, no AI Studio API key)
 gcloud auth application-default login
-gcloud config set project gen-lang-client-0121983409
+gcloud config set project skilled-loader-468413-j6
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\Users\jakes\Downloads\skilled-loader-468413-j6-50ec35997585.json"
 $env:HEALTHAI_LLM_BACKEND = "gemini"
+$env:GOOGLE_CLOUD_PROJECT = "skilled-loader-468413-j6"
+$env:GOOGLE_CLOUD_LOCATION = "global"
 $env:HEALTHAI_STRUCTURED_EXTRACTION_BACKEND = "gemini"
 $env:HEALTHAI_CLINICAL_REASONING_BACKEND = "gemini"
 $env:HEALTHAI_APPEAL_DRAFTING_BACKEND = "gemini"
-# optional model override (defaults to gemini-2.5-flash):
-$env:HEALTHAI_GEMINI_MODEL = "gemini-2.5-flash"
+# optional model override (defaults to gemini-3.5-flash):
+$env:HEALTHAI_GEMINI_MODEL = "gemini-3.5-flash"
+# optional thinking override (defaults to 0 for structured JSON):
+$env:HEALTHAI_GEMINI_THINKING_BUDGET = "0"
 
 # Optional Vertex smoke-test chat app:
 streamlit run vertex_gemini_chat_app.py
@@ -202,6 +207,10 @@ streamlit run vertex_gemini_chat_app.py
 
 Without ADC, an API key, or another configured hosted provider, extraction and
 review use the deterministic offline backends.
+
+If you prefer a service account instead of interactive ADC, set
+`GOOGLE_APPLICATION_CREDENTIALS` to the local JSON key path for that account.
+Do not commit the key file into the repository.
 
 ---
 

@@ -7,6 +7,7 @@ import json
 import pytest
 
 from app.agents.prompts import build_extraction_messages
+import app.services.factory as factory
 from app.services.factory import get_llm_client
 from app.services.local_client import LocalHeuristicClient
 
@@ -211,6 +212,14 @@ class TestFactory:
 
     def test_default_without_key_is_local(self, monkeypatch):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
         monkeypatch.delenv("HEALTHAI_LLM_BACKEND", raising=False)
+        monkeypatch.delenv("HEALTHAI_GEMINI_USE_VERTEXAI", raising=False)
+        monkeypatch.delenv("GOOGLE_GENAI_USE_VERTEXAI", raising=False)
+        monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+        monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        monkeypatch.setattr(factory, "_google_adc_available", lambda: False)
         client = get_llm_client()
         assert client.is_ai is False

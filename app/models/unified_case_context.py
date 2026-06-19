@@ -20,6 +20,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.models.conflict_report import ConflictReport
+from app.models.clinical_fact import ClinicalFact, ClinicalFactDomain
 from app.models.evidence_reference import EvidenceReference
 from app.models.patient_case import PatientCase
 
@@ -42,6 +43,7 @@ class UnifiedCaseContext(BaseModel):
     case_id: str
     document_ids: list[str] = Field(default_factory=list)
     evidence: list[EvidenceReference] = Field(default_factory=list)
+    clinical_facts: list[ClinicalFact] = Field(default_factory=list)
     resolved_facts: dict[str, ResolvedFact] = Field(default_factory=dict)
     conflict_report: ConflictReport
     missing_information: list[str] = Field(default_factory=list)
@@ -53,6 +55,13 @@ class UnifiedCaseContext(BaseModel):
     def evidence_for_fact(self, fact_type: str) -> list[EvidenceReference]:
         """All evidence references for a given logical fact."""
         return [e for e in self.evidence if e.fact_type == fact_type]
+
+    def clinical_facts_for_domain(
+        self, domain: ClinicalFactDomain | str
+    ) -> list[ClinicalFact]:
+        """All canonical clinical facts for a given domain."""
+        domain_value = domain.value if isinstance(domain, ClinicalFactDomain) else str(domain)
+        return [f for f in self.clinical_facts if f.domain.value == domain_value]
 
     def get_evidence(self, evidence_id: str) -> Optional[EvidenceReference]:
         for e in self.evidence:

@@ -41,6 +41,19 @@ from app.models.case_document import (
     PAGE_DELIMITER,
 )
 from app.models.evidence_reference import EvidenceReference, new_evidence_id
+from app.models.clinical_fact import (
+    AssertionStatus,
+    ClinicalFact,
+    ClinicalFactDomain,
+    ConflictStatus,
+    DiagnosisState,
+    GovernanceStatus,
+    ProviderState,
+    StepTherapyState,
+    TBScreenState,
+    TemporalityStatus,
+    new_clinical_fact_id,
+)
 from app.models.conflict_report import (
     ConflictReport,
     ConflictSeverity,
@@ -133,6 +146,17 @@ __all__ = [
     "PAGE_DELIMITER",
     "EvidenceReference",
     "new_evidence_id",
+    "AssertionStatus",
+    "ClinicalFact",
+    "ClinicalFactDomain",
+    "ConflictStatus",
+    "DiagnosisState",
+    "GovernanceStatus",
+    "ProviderState",
+    "StepTherapyState",
+    "TBScreenState",
+    "TemporalityStatus",
+    "new_clinical_fact_id",
     "ConflictReport",
     "ConflictSeverity",
     "FactConflict",

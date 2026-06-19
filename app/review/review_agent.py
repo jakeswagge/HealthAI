@@ -20,6 +20,7 @@ is always usable locally and the JSON contract is identical either way.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 
 from pydantic import ValidationError as PydanticValidationError
 
@@ -34,7 +35,12 @@ from app.models.review_result import (
     Recommendation,
     ReviewResult,
 )
+from app.policies.formulary import FormularyPolicyIndex
 from app.review.engine import ClinicalReviewEngine
+from app.review.comparison import (
+    compare_reviews,
+    reconcile_ai_review_with_deterministic,
+)
 from app.review.review_prompts import (
     REVIEW_SYSTEM_PROMPT,
     build_review_messages,
@@ -75,12 +81,22 @@ class GuidelineReviewAgent:
         self,
         llm_client: LLMClient | None = None,
         repository: GuidelineRepository | None = None,
+        formulary_policy: FormularyPolicyIndex | None = None,
+        payer_id: str | None = None,
+        ai_primary: bool | None = None,
         max_retries: int = 3,
         max_tokens: int = 3000,
     ) -> None:
         self.llm = llm_client or get_llm_client()
         self.repository = repository or get_default_repository()
-        self.engine = ClinicalReviewEngine(repository=self.repository)
+        self.engine = ClinicalReviewEngine(
+            repository=self.repository,
+            formulary_policy=formulary_policy,
+            payer_id=payer_id,
+        )
+        self.formulary_policy = formulary_policy
+        self.payer_id = payer_id
+        self.ai_primary = _env_truthy("HEALTHAI_AI_PRIMARY_REVIEW", default=False) if ai_primary is None else ai_primary
         self.max_retries = max(1, max_retries)
         self.max_tokens = max_tokens
 
@@ -115,6 +131,10 @@ class GuidelineReviewAgent:
                         retrieved_guidelines=retrieved_guidelines,
                     )
                     if ai_result is not None:
+                        if not self.ai_primary:
+                            self._apply_deterministic_guardrails(
+                                case, document_text, ai_result.result
+                            )
                         return ai_result
 
             result = self.engine.review(case, document_text)
@@ -169,6 +189,10 @@ class GuidelineReviewAgent:
             retrieved_guidelines=retrieved_guidelines,
         )
         if ai_result is not None:
+            if not self.ai_primary:
+                self._apply_deterministic_guardrails(
+                    case, document_text, ai_result.result
+                )
             return ai_result
 
         # Exhausted retries or backend error on a real AI backend: fall back
@@ -222,6 +246,7 @@ class GuidelineReviewAgent:
                 )
                 last_raw = response.text
                 data = _extract_json_object(response.text)
+                ai_supplied_criteria_detail = bool(data.get("criteria_detail"))
                 result = ReviewResult.model_validate(data)
 
                 # Stamp guideline identity + sane confidence fallback.
@@ -272,6 +297,8 @@ class GuidelineReviewAgent:
                     guideline=guideline,
                     backend=self.backend_name,
                 )
+                if ai_supplied_criteria_detail:
+                    self._finalize_ai_decision_from_details(result, guideline=guideline)
 
                 return ReviewAgentResult(
                     result=result,
@@ -308,6 +335,123 @@ class GuidelineReviewAgent:
         self._last_ai_errors = errors
         self._last_ai_raw_text = last_raw
         return None
+
+    def _apply_deterministic_guardrails(
+        self,
+        case: PatientCase,
+        document_text: str | None,
+        ai: ReviewResult,
+    ) -> None:
+        """Use deterministic review as the safety floor for AI output."""
+        deterministic = self.engine.review(case, document_text)
+        reconcile_ai_review_with_deterministic(deterministic, ai)
+        comparison = compare_reviews(deterministic, ai)
+        if comparison.requires_human_review:
+            gate = dict(ai.safety_gate or {})
+            gate["comparison"] = comparison.as_dict()
+            ai.safety_gate = gate
+        if (deterministic.safety_gate or {}).get("policy_rules"):
+            self._copy_deterministic_decision(
+                deterministic,
+                ai,
+                reason=(
+                    "Deterministic policy-backed review set the final "
+                    "recommendation."
+                ),
+            )
+            return
+        if (
+            deterministic.recommendation is Recommendation.INSUFFICIENT_INFORMATION
+            and ai.recommendation is not Recommendation.INSUFFICIENT_INFORMATION
+            and deterministic.guideline_id
+            and (
+                not ai.guideline_id
+                or ai.guideline_id == deterministic.guideline_id
+            )
+        ):
+            self._copy_deterministic_decision(
+                deterministic,
+                ai,
+                reason=(
+                    "Deterministic guardrail changed the recommendation to "
+                    "INSUFFICIENT_INFORMATION because required evidence is "
+                    "unknown rather than explicitly contradicted."
+                ),
+            )
+            return
+        if (
+            deterministic.recommendation is Recommendation.DENY
+            and ai.recommendation is Recommendation.APPROVE
+        ):
+            ai.recommendation = Recommendation.DENY
+            ai.rationale = (
+                ai.rationale
+                + " Deterministic guardrail changed the recommendation to DENY."
+            ).strip()
+            for criterion in deterministic.missing_criteria:
+                if criterion not in ai.missing_criteria:
+                    ai.missing_criteria.append(criterion)
+                deterministic_detail = next(
+                    (
+                        d
+                        for d in deterministic.criteria_detail
+                        if d.description == criterion
+                    ),
+                    None,
+                )
+                if deterministic_detail is not None:
+                    copied = deterministic_detail.model_copy(deep=True)
+                    replaced = False
+                    for idx, detail in enumerate(ai.criteria_detail):
+                        if detail.description == criterion:
+                            if detail.met or detail.status is CriterionStatus.MET:
+                                ai.criteria_detail[idx] = copied
+                            replaced = True
+                            break
+                    if not replaced:
+                        ai.criteria_detail.append(copied)
+            for criterion in deterministic.matched_criteria:
+                if criterion in ai.matched_criteria:
+                    ai.matched_criteria.remove(criterion)
+
+    @staticmethod
+    def _copy_deterministic_decision(
+        deterministic: ReviewResult,
+        ai: ReviewResult,
+        *,
+        reason: str,
+    ) -> None:
+        """Use a deterministic policy decision while retaining AI provenance."""
+        ai.recommendation = deterministic.recommendation
+        ai.matched_criteria = list(deterministic.matched_criteria)
+        ai.missing_criteria = list(deterministic.missing_criteria)
+        ai.missing_evidence = list(deterministic.missing_evidence)
+        ai.recommended_actions = list(deterministic.recommended_actions)
+        ai.contraindications_found = list(deterministic.contraindications_found)
+        ai.criteria_detail = [
+            detail.model_copy(deep=True) for detail in deterministic.criteria_detail
+        ]
+        ai.confidence_score = deterministic.confidence_score
+        ai.guideline_id = deterministic.guideline_id
+        ai.service_name = deterministic.service_name
+        ai.matched_evidence_ids = list(deterministic.matched_evidence_ids)
+        ai.missing_evidence_ids = list(deterministic.missing_evidence_ids)
+        ai.rationale_evidence_ids = list(deterministic.rationale_evidence_ids)
+        ai.recommendation_evidence_ids = list(
+            deterministic.recommendation_evidence_ids
+        )
+        ai.evidence_refs = {
+            key: list(value) for key, value in deterministic.evidence_refs.items()
+        }
+        gate = dict(ai.safety_gate or {})
+        gate.update(deterministic.safety_gate or {})
+        gate["deterministic_decision_source"] = reason
+        ai.safety_gate = gate
+        ai.rationale = (
+            deterministic.rationale
+            + " "
+            + reason
+        ).strip()
 
     @staticmethod
     def _stamp_review_metadata(
@@ -401,6 +545,74 @@ class GuidelineReviewAgent:
                 detail.review_backend = backend
         result.criteria_detail = [*ordered, *extra]
 
+    @staticmethod
+    def _finalize_ai_decision_from_details(
+        result: ReviewResult,
+        *,
+        guideline,
+    ) -> None:
+        """Keep AI recommendation and summary lists consistent with details."""
+        if guideline is None or not result.criteria_detail:
+            return
+
+        required_ids = {criterion.id for criterion in guideline.required_criteria}
+        required = [
+            detail for detail in result.criteria_detail if detail.id in required_ids
+        ]
+        if not required:
+            return
+
+        matched: list[str] = []
+        missing: list[str] = []
+        unknown_found = False
+        not_met_found = False
+        for detail in required:
+            if detail.status is CriterionStatus.MET or detail.met:
+                detail.status = CriterionStatus.MET
+                detail.met = True
+                matched.append(detail.description)
+                continue
+
+            detail.met = False
+            missing.append(detail.description)
+            if detail.status is CriterionStatus.NOT_MET:
+                not_met_found = True
+            else:
+                detail.status = CriterionStatus.UNKNOWN
+                unknown_found = True
+                if not detail.missing_evidence:
+                    detail.missing_evidence = [
+                        f"Current patient-specific evidence needed for: {detail.description}"
+                    ]
+
+        result.matched_criteria = _dedupe_preserve_order(matched)
+        result.missing_criteria = _dedupe_preserve_order(missing)
+        if result.contraindications_found or not_met_found:
+            result.recommendation = Recommendation.DENY
+        elif unknown_found:
+            result.recommendation = Recommendation.INSUFFICIENT_INFORMATION
+        else:
+            result.recommendation = Recommendation.APPROVE
+
 
 def _norm_text(value: str) -> str:
     return " ".join(str(value).lower().split())
+
+
+def _dedupe_preserve_order(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in items:
+        key = _norm_text(item)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(item)
+    return out
+
+
+def _env_truthy(name: str, *, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}

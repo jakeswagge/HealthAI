@@ -28,6 +28,14 @@ def get_case_service() -> CaseService:
     return service
 
 
+def reset_case_service() -> None:
+    """Close and drop this thread's cached CaseService, if one exists."""
+    service = getattr(_SERVICE_LOCAL, "case_service", None)
+    if service is not None:
+        service.close()
+        delattr(_SERVICE_LOCAL, "case_service")
+
+
 def get_metrics_collector() -> MetricsCollector:
     """A metrics collector sharing the service's connection."""
     service = get_case_service()
@@ -81,9 +89,16 @@ def select_or_create_case(service: CaseService, key_prefix: str = "assembly") ->
     """Let the user pick an existing case or start a new multi-document case."""
     cases = service.list_cases()
     labels = ["(new case)"] + [c.case_id for c in cases]
-    choice = st.selectbox("Target case", labels, key=f"{key_prefix}_case_select")
+    choice = st.selectbox(
+        "Target case",
+        labels,
+        key=session.widget_key(f"{key_prefix}_case_select"),
+    )
     if choice == "(new case)":
-        if st.button("Create new multi-document case", key=f"{key_prefix}_new_case"):
+        if st.button(
+            "Create new multi-document case",
+            key=session.widget_key(f"{key_prefix}_new_case"),
+        ):
             rec = service.create_case(source_filename="multi-document case")
             session.set_persisted_case_id(rec.case_id)
             st.success(f"Created case {rec.case_id}.")

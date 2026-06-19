@@ -91,6 +91,15 @@ class TestNewDocumentClearsCache:
         assert session.get_review() is None
         assert session.get_page_count() == 1
 
+    def test_new_document_clears_selected_saved_case(self, fake_state):
+        session.set_active_document("sig-1", "doc1.txt")
+        session.set_persisted_case_id("case-6133EF117B7E")
+
+        is_new = session.set_active_document("sig-2", "doc2.txt")
+
+        assert is_new is True
+        assert session.get_persisted_case_id() is None
+
 
 class TestSameDocumentPreservesCache:
     def test_same_signature_returns_false_and_keeps_cache(self, fake_state):
@@ -162,3 +171,32 @@ class TestClearDocument:
         assert fake_state[session.KEY_SIGNATURE] is None
         assert session.get_text() is None
         assert session.get_case() is None
+
+
+class TestWorkspaceReset:
+    def test_reset_workspace_clears_selected_case_and_rotates_widget_keys(
+        self,
+        fake_state,
+    ):
+        session.set_active_document("sig-1", "doc1.txt")
+        session.set_text("text", page_count=3)
+        session.set_case("CASE", session.ExtractionMeta(attempts=1))
+        session.set_review("REVIEW", used_ai=True)
+        session.set_appeal("APPEAL", used_ai=True)
+        session.set_persisted_case_id("case-old")
+
+        assert session.widget_key("shared_uploader") == "shared_uploader"
+
+        session.reset_workspace_state()
+
+        assert fake_state[session.KEY_SIGNATURE] is None
+        assert fake_state[session.KEY_FILENAME] is None
+        assert session.get_text() is None
+        assert session.get_page_count() == 1
+        assert session.get_case() is None
+        assert session.get_review() is None
+        assert session.get_review_used_ai() is False
+        assert session.get_appeal() is None
+        assert session.get_appeal_used_ai() is False
+        assert session.get_persisted_case_id() is None
+        assert session.widget_key("shared_uploader") == "shared_uploader_1"

@@ -36,6 +36,7 @@ KEY_EXTRACTION_META = "extraction_meta"
 KEY_APPEAL = "appeal_letter"
 KEY_APPEAL_USED_AI = "appeal_used_ai"
 KEY_PERSISTED_CASE_ID = "persisted_case_id"
+KEY_RESET_GENERATION = "workspace_reset_generation"
 
 
 def document_signature(filename: str, data: bytes) -> str:
@@ -67,6 +68,7 @@ def init_state() -> None:
         KEY_APPEAL: None,
         KEY_APPEAL_USED_AI: False,
         KEY_PERSISTED_CASE_ID: None,
+        KEY_RESET_GENERATION: 0,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -110,6 +112,24 @@ def clear_document() -> None:
     st.session_state[KEY_SIGNATURE] = None
     st.session_state[KEY_FILENAME] = None
     _clear_derived(clear_persisted_case=False)
+
+
+def reset_workspace_state() -> None:
+    """Clear the active document, selected case, and all derived artifacts."""
+    init_state()
+    generation = st.session_state.get(KEY_RESET_GENERATION, 0)
+    st.session_state[KEY_SIGNATURE] = None
+    st.session_state[KEY_FILENAME] = None
+    _clear_derived(clear_persisted_case=True)
+    st.session_state[KEY_RESET_GENERATION] = generation + 1
+
+
+def widget_key(base: str) -> str:
+    """Return a widget key that changes after a workspace reset."""
+    generation = st.session_state.get(KEY_RESET_GENERATION, 0)
+    if not generation:
+        return base
+    return f"{base}_{generation}"
 
 
 # --------------------------------------------------------------------------- #

@@ -54,10 +54,14 @@ def render_document_assembly_tab() -> None:
         "Add supporting documents",
         type=["pdf", "txt"],
         accept_multiple_files=True,
-        key="assembly_uploader",
+        key=session.widget_key("assembly_uploader"),
     )
     type_options = ["(auto-detect)"] + [c.value for c in DocumentCategory]
-    chosen_type = st.selectbox("Document type", type_options, key="assembly_doc_type")
+    chosen_type = st.selectbox(
+        "Document type",
+        type_options,
+        key=session.widget_key("assembly_doc_type"),
+    )
 
     if uploads and st.button("Attach uploaded document(s)", key="assembly_attach"):
         added = 0

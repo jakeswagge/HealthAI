@@ -14,15 +14,24 @@ from typing import Any
 from app.services.llm_client import LLMClient, LLMError, LLMResponse
 
 
-DEFAULT_VERTEX_PROJECT = "gen-lang-client-0121983409"
-DEFAULT_VERTEX_LOCATION = "us-central1"
-DEFAULT_MODEL = os.environ.get("HEALTHAI_GEMINI_MODEL", "gemini-2.5-flash")
+DEFAULT_VERTEX_PROJECT = "skilled-loader-468413-j6"
+DEFAULT_VERTEX_LOCATION = "global"
+DEFAULT_MODEL = os.environ.get("HEALTHAI_GEMINI_MODEL", "gemini-3.5-flash")
 
 
 def _env_truthy(value: str | None, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(value: str | None, default: int) -> int:
+    if value is None or not value.strip():
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
 
 
 class GeminiClient(LLMClient):
@@ -37,8 +46,14 @@ class GeminiClient(LLMClient):
         use_vertexai: bool | None = None,
         project: str | None = None,
         location: str | None = None,
+        thinking_budget: int | None = None,
     ) -> None:
         self.model = model
+        self.thinking_budget = (
+            _env_int(os.environ.get("HEALTHAI_GEMINI_THINKING_BUDGET"), 0)
+            if thinking_budget is None
+            else thinking_budget
+        )
         self.use_vertexai = (
             _env_truthy(os.environ.get("HEALTHAI_GEMINI_USE_VERTEXAI"), default=True)
             if use_vertexai is None
@@ -94,10 +109,18 @@ class GeminiClient(LLMClient):
         temperature: float = 0.0,
     ) -> LLMResponse:
         contents = self._format_messages(messages)
+        config_kwargs = {
+            "system_instruction": system,
+            "max_output_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        if self.thinking_budget is not None:
+            config_kwargs["thinking_config"] = self._types.ThinkingConfig(
+                thinking_budget=self.thinking_budget,
+                include_thoughts=False,
+            )
         config = self._types.GenerateContentConfig(
-            system_instruction=system,
-            max_output_tokens=max_tokens,
-            temperature=temperature,
+            **config_kwargs,
         )
 
         try:

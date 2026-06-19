@@ -30,6 +30,7 @@ from app.models.appeal_letter import AppealLetter
 from app.models.governance import GovernanceSettings
 from app.models.payer import PayerProfile
 from app.models.review_result import ReviewResult
+from app.policies.formulary import FormularyPolicyIndex
 
 
 @dataclass
@@ -65,11 +66,13 @@ class PayerService:
         explainability: ExplainabilityService,
         payers: PayerRepository | None = None,
         pack_resolver: GuidelinePackResolver | None = None,
+        formulary_policy: FormularyPolicyIndex | None = None,
     ) -> None:
         self.lifecycle = lifecycle
         self.explainability = explainability
         self.payers = payers or get_payer_repository()
         self.pack_resolver = pack_resolver or get_pack_resolver()
+        self.formulary_policy = formulary_policy
 
     # ------------------------------------------------------------------ #
     # Payer catalog
@@ -107,6 +110,14 @@ class PayerService:
                 return g.version
         return payer.version
 
+    def _review_agent_for(self, payer: PayerProfile) -> GuidelineReviewAgent:
+        repo = self.pack_resolver.resolve(payer.guideline_pack)
+        return GuidelineReviewAgent(
+            repository=repo,
+            formulary_policy=self.formulary_policy,
+            payer_id=payer.payer_id,
+        )
+
     # ------------------------------------------------------------------ #
     # Reviews / appeals
     # ------------------------------------------------------------------ #
@@ -119,8 +130,7 @@ class PayerService:
         """Generate a governed review using the payer's guideline pack."""
         self.lifecycle.require(case_id)
         payer = self.get_payer(payer_id)
-        repo = self.pack_resolver.resolve(payer.guideline_pack)
-        agent = GuidelineReviewAgent(repository=repo)
+        agent = self._review_agent_for(payer)
 
         governed = self.explainability.generate_review(
             case_id, settings, review_agent=agent
@@ -139,7 +149,7 @@ class PayerService:
         self.lifecycle.require(case_id)
         payer = self.get_payer(payer_id)
         repo = self.pack_resolver.resolve(payer.guideline_pack)
-        review_agent = GuidelineReviewAgent(repository=repo)
+        review_agent = self._review_agent_for(payer)
         appeal_agent = AppealGenerationAgent(repository=repo)
 
         governed = self.explainability.generate_appeal(
